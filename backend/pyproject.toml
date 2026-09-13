@@ -1,0 +1,40 @@
+[project]
+name = "bamboo-quiz-backend"
+version = "0.1.0"
+description = "AI 闯关学习小程序 MVP 后端"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  "fastapi==0.141.1",
+  "langchain==1.4.0",
+  "langchain-deepseek==1.1.0",
+  "pydantic==2.13.5",
+  "pydantic-settings>=2.10,<3",
+  "python-dotenv>=1.1,<2",
+  "uvicorn[standard]>=0.35,<1",
+]
+
+[dependency-groups]
+dev = [
+  "httpx>=0.28,<1",
+  "pytest>=8.4,<9",
+  "pytest-asyncio>=1.1,<2",
+  "pytest-cov>=6.2,<7",
+]
+
+[tool.pytest.ini_options]
+addopts = "-q --strict-markers --disable-warnings -p no:cacheprovider"
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+branch = true
+source = ["app"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "if __name__ == .__main__.:",
+]

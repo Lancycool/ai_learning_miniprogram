@@ -1,0 +1,18 @@
+.poster-page { height: 100vh; overflow: hidden; background: #dfeee2; }
+.bar-space { width: 34px; }
+.poster-wrap { display: flex; height: calc(100% - 48px); flex-direction: column; align-items: center; }
+.poster-card { position: relative; width: 293px; min-height: 550px; margin-top: 8px; overflow: hidden; padding: 30px 25px 23px; border: 7px solid #fff; background: linear-gradient(90deg,transparent 49%,rgba(47,125,89,.08) 50%,transparent 51%),#fffdf5; box-shadow: 0 18px 35px rgba(31,96,68,.16); }
+.poster-card::after { position: absolute; right: -46px; bottom: 118px; width: 62px; height: 205px; border: 4px solid #1f6044; border-radius: 40px; background: repeating-linear-gradient(to bottom,#a9d36e 0 45px,#1f6044 45px 50px); content: ''; opacity: .72; transform: rotate(-7deg); }
+.poster-card > text,.poster-card > image,.poster-card > view { position: relative; z-index: 1; }
+.poster-brand { display: block; color: #1f6044; font-size: 12px; font-weight: 900; }
+.poster-quote { display: block; width: 215px; margin-top: 42px; font-size: 29px; font-weight: 900; line-height: 1.34; letter-spacing: -1px; }
+.poster-line { width: 35px; height: 5px; margin: 18px 0; border-radius: 5px; background: #ffd76a; }
+.poster-topic { display: block; color: #68736b; font-size: 11px; }
+.poster-score { display: block; margin-top: 11px; color: #1f6044; font-size: 13px; font-weight: 900; line-height: 1.5; }
+.poster-panda { position: absolute !important; bottom: 72px; left: 19px; width: 120px; height: 132px; }
+.qr-placeholder { position: absolute !important; right: 24px; bottom: 25px; display: flex; width: 72px; height: 72px; align-items: center; justify-content: center; border: 5px solid #fff; background: linear-gradient(90deg,#202520 50%,transparent 50%) 0 0/14px 14px,linear-gradient(#202520 50%,transparent 50%) 0 0/14px 14px,#fffdf5; }
+.qr-placeholder text { padding: 2px; background: #fffdf5; color: #202520; font-size: 8px; }
+.poster-foot { position: absolute !important; bottom: 29px; left: 24px; color: #68736b; font-size: 9px; }
+.poster-tip { margin-top: 15px; color: #1f6044; font-size: 11px; font-weight: 800; }
+.save-button { margin-top: auto; margin-bottom: calc(2px + env(safe-area-inset-bottom)); }
+.share-canvas { position: fixed; top: -2000px; left: -2000px; width: 640px; height: 1080px; opacity: 0; pointer-events: none; }

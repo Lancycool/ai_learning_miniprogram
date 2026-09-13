@@ -1,0 +1,132 @@
+page {
+  min-height: 100%;
+  background: #fffdf5;
+  color: #202520;
+  font-family: "MiSans", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+view, text, button, textarea, canvas {
+  box-sizing: border-box;
+}
+
+button::after {
+  border: none;
+}
+
+.page-shell {
+  min-height: 100vh;
+  padding: calc(20px + env(safe-area-inset-top)) 20px calc(22px + env(safe-area-inset-bottom));
+  background: #fffdf5;
+}
+
+.appbar {
+  display: flex;
+  height: 48px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.appbar-title {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.icon-button {
+  display: flex;
+  width: 34px;
+  height: 34px;
+  margin: 0;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(47, 125, 89, .1);
+  color: #202520;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.primary-button,
+.secondary-button {
+  display: flex;
+  width: 100%;
+  min-height: 50px;
+  margin: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 17px;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.primary-button {
+  border: 2px solid #1f6044;
+  border-bottom-width: 5px;
+  background: #2f7d59;
+  color: #fff;
+}
+
+.primary-button[disabled] {
+  border-color: #b9c3bb;
+  background: #cbd2cc;
+  color: #fff;
+}
+
+.secondary-button {
+  border: 2px solid #d9dfd3;
+  border-bottom-width: 4px;
+  background: #fff;
+  color: #202520;
+}
+
+.mini-xp {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 10px;
+  border: 1px solid #ead087;
+  border-radius: 18px;
+  background: #fff7d3;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.panda-image {
+  width: 112px;
+  height: 120px;
+  animation: panda-breathe 3.2s ease-in-out infinite;
+}
+
+.bottom-actions {
+  display: grid;
+  gap: 9px;
+  margin-top: 22px;
+}
+
+.safe-note {
+  margin: 10px 0 0;
+  color: #68736b;
+  text-align: center;
+  font-size: 10px;
+}
+
+.notice-card {
+  padding: 15px;
+  border-left: 5px solid #2f7d59;
+  background: #eef7e9;
+  color: #4e5c53;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+@keyframes panda-breathe {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-3px) rotate(-1deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panda-image { animation: none; }
+}

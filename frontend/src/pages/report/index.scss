@@ -1,0 +1,20 @@
+.report-page { height: 100vh; overflow: hidden; background: #f8faf4; }
+.report-page .icon-button { font-size: 24px; }
+.report-content { height: calc(100% - 48px); padding-bottom: calc(22px + env(safe-area-inset-bottom)); overflow-y: auto; }
+.report-hero { display: grid; margin: 8px 0 16px; padding: 15px 10px 15px 17px; grid-template-columns: 1fr 106px; align-items: center; border-radius: 21px 21px 21px 6px; background: #2f7d59; color: #fff; }
+.report-hero-title { display: block; white-space: pre-line; font-size: 19px; font-weight: 900; line-height: 1.35; }
+.report-hero-description { display: block; margin-top: 7px; color: rgba(255,255,255,.78); font-size: 11px; line-height: 1.5; }
+.score-ring { position: relative; display: flex; width: 92px; height: 92px; align-items: center; justify-content: center; border-radius: 50%; }
+.score-ring::before { position: absolute; width: 70px; height: 70px; border-radius: 50%; background: #2f7d59; content: ''; }
+.score-ring text { position: relative; z-index: 1; font-size: 23px; font-weight: 900; }
+.report-section { margin-top: 17px; }
+.section-title { display: block; margin-bottom: 10px; font-size: 14px; font-weight: 800; }
+.summary-line { display: grid; padding: 10px 0; grid-template-columns: 27px 1fr; gap: 8px; align-items: start; border-bottom: 1px solid #d9dfd3; color: #445048; font-size: 12px; line-height: 1.55; }
+.line-number { display: flex; width: 23px; height: 23px; align-items: center; justify-content: center; border-radius: 7px; background: #dff2ef; color: #1f6044; font-size: 10px; font-weight: 900; }
+.mastery-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mastery-box { min-height: 106px; padding: 12px; border-top: 4px solid #2f7d59; background: #fff; }
+.mastery-box.weak { border-top-color: #efb82c; }
+.mastery-title { display: block; font-size: 11px; font-weight: 800; }
+.mastery-copy { display: block; margin-top: 7px; color: #68736b; white-space: pre-line; font-size: 11px; line-height: 1.55; }
+.report-actions { display: grid; margin-top: 18px; grid-template-columns: 1fr 1fr; gap: 9px; }
+.report-actions button { min-height: 45px; font-size: 12px; }
