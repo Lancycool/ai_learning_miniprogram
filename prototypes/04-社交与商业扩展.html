@@ -1,0 +1,946 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>竹知岛 · 社交与商业扩展原型</title>
+  <style>
+    :root {
+      --bamboo: #2f7d59;
+      --deep: #1f6044;
+      --young: #a9d36e;
+      --paper: #fffdf5;
+      --paper-2: #f4f0df;
+      --ink: #202520;
+      --muted: #69736c;
+      --sun: #ffd76a;
+      --berry: #e96655;
+      --river: #4f8fb9;
+      --sky: #dff2ef;
+      --line: #d9dfd3;
+      --white: #fff;
+      font-family: "MiSans", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      background:
+        linear-gradient(rgba(47, 125, 89, .055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(47, 125, 89, .055) 1px, transparent 1px),
+        var(--paper-2);
+      background-size: 28px 28px;
+    }
+
+    button, input { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible {
+      outline: 4px solid rgba(255, 215, 106, .8);
+      outline-offset: 3px;
+    }
+
+    .page-head {
+      display: flex;
+      max-width: 1420px;
+      margin: auto;
+      padding: 46px 28px 26px;
+      align-items: end;
+      justify-content: space-between;
+      gap: 28px;
+    }
+
+    .page-head h1 {
+      margin: 0 0 10px;
+      color: var(--deep);
+      font-size: clamp(30px, 4vw, 52px);
+      line-height: 1;
+      letter-spacing: -.04em;
+    }
+
+    .page-head p {
+      max-width: 730px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    .page-tag {
+      padding: 9px 13px;
+      border: 1px solid var(--bamboo);
+      border-radius: 18px;
+      background: var(--paper);
+      color: var(--deep);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(330px, 390px));
+      justify-content: center;
+      gap: 38px 30px;
+      padding: 18px 28px 72px;
+    }
+
+    .screen-label {
+      display: flex;
+      min-height: 44px;
+      margin: 0 4px 10px;
+      align-items: center;
+      gap: 10px;
+      color: var(--deep);
+      font-size: 14px;
+      font-weight: 850;
+    }
+
+    .screen-label span {
+      display: grid;
+      width: 26px;
+      height: 26px;
+      place-items: center;
+      border: 2px solid var(--bamboo);
+      border-radius: 50%;
+      background: var(--paper);
+      font-size: 12px;
+    }
+
+    .phone {
+      position: relative;
+      height: 812px;
+      overflow: hidden;
+      border: 9px solid var(--ink);
+      border-radius: 38px;
+      background: var(--paper);
+      box-shadow: 0 18px 45px rgba(45, 68, 52, .13);
+    }
+
+    .phone::before {
+      position: absolute;
+      z-index: 10;
+      top: 8px;
+      left: 50%;
+      width: 92px;
+      height: 22px;
+      border-radius: 0 0 15px 15px;
+      background: var(--ink);
+      content: "";
+      transform: translateX(-50%);
+    }
+
+    .status {
+      display: flex;
+      height: 44px;
+      padding: 5px 19px 0;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 850;
+    }
+
+    .appbar {
+      display: flex;
+      height: 48px;
+      padding: 0 18px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .appbar h2 { margin: 0; font-size: 16px; }
+
+    .icon-button {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(47, 125, 89, .1);
+      cursor: pointer;
+    }
+
+    .content {
+      position: relative;
+      height: calc(100% - 92px);
+      padding: 15px 20px 80px;
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+
+    .content::-webkit-scrollbar { display: none; }
+
+    .panda {
+      --scarf: var(--bamboo);
+      width: 112px;
+      height: 120px;
+      overflow: visible;
+    }
+
+    .panda .panda-bob {
+      transform-box: fill-box;
+      transform-origin: center bottom;
+      animation: panda-bob 3s ease-in-out infinite;
+    }
+
+    .panda .panda-eye {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: panda-blink 4.8s ease-in-out infinite;
+    }
+
+    .panda.rival { --scarf: var(--berry); }
+    .panda.blue { --scarf: var(--river); }
+    .panda.mini { width: 64px; height: 68px; }
+
+    .hero-social {
+      position: relative;
+      height: 210px;
+      margin-bottom: 17px;
+      padding: 20px;
+      overflow: hidden;
+      border-radius: 24px 24px 24px 7px;
+      background: var(--bamboo);
+      color: white;
+    }
+
+    .hero-social h3 {
+      position: relative;
+      z-index: 2;
+      width: 190px;
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.32;
+    }
+
+    .hero-social p {
+      position: relative;
+      z-index: 2;
+      width: 185px;
+      margin: 8px 0 0;
+      color: rgba(255, 255, 255, .76);
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .hero-social .panda {
+      position: absolute;
+      right: 14px;
+      bottom: -5px;
+    }
+
+    .hero-social::after {
+      position: absolute;
+      right: -32px;
+      bottom: -55px;
+      width: 196px;
+      height: 170px;
+      border: 8px solid rgba(255, 255, 255, .12);
+      border-radius: 50%;
+      content: "";
+    }
+
+    .primary, .secondary {
+      display: flex;
+      width: 100%;
+      min-height: 49px;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      border-radius: 16px;
+      font-size: 13px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .primary {
+      border: 2px solid var(--deep);
+      border-bottom-width: 5px;
+      background: var(--bamboo);
+      color: white;
+    }
+
+    .primary:disabled {
+      border-color: #aeb8b0;
+      background: #cbd2cc;
+      color: white;
+      cursor: not-allowed;
+    }
+
+    .secondary {
+      border: 2px solid var(--line);
+      border-bottom-width: 4px;
+      background: white;
+    }
+
+    .hero-social .primary {
+      position: absolute;
+      z-index: 3;
+      bottom: 18px;
+      left: 20px;
+      width: 148px;
+      min-height: 42px;
+      border-color: #5b480b;
+      background: var(--sun);
+      color: #5b480b;
+      font-size: 11px;
+    }
+
+    .section-title {
+      display: flex;
+      margin: 19px 0 9px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .section-title h3 { margin: 0; font-size: 14px; }
+    .section-title button { border: 0; background: none; color: var(--deep); font-size: 10px; font-weight: 800; cursor: pointer; }
+
+    .friend-row {
+      display: grid;
+      grid-template-columns: 45px 1fr auto;
+      gap: 10px;
+      padding: 12px 0;
+      align-items: center;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .friend-avatar {
+      display: grid;
+      width: 43px;
+      height: 43px;
+      place-items: center;
+      border: 2px solid var(--deep);
+      border-radius: 50% 50% 50% 32%;
+      background: var(--sun);
+      font-size: 20px;
+    }
+
+    .friend-avatar.blue { background: var(--sky); }
+    .friend-avatar.pink { background: #f7e2de; }
+    .friend-row strong { display: block; font-size: 12px; }
+    .friend-row small { display: block; margin-top: 4px; color: var(--muted); font-size: 9px; }
+
+    .challenge {
+      padding: 7px 10px;
+      border: 1px solid var(--bamboo);
+      border-radius: 12px;
+      background: #eef7e9;
+      color: var(--deep);
+      font-size: 9px;
+      font-weight: 850;
+      cursor: pointer;
+    }
+
+    .bottom-nav {
+      position: absolute;
+      z-index: 5;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      display: grid;
+      height: 66px;
+      grid-template-columns: repeat(4, 1fr);
+      border-top: 1px solid var(--line);
+      background: rgba(255, 253, 245, .97);
+    }
+
+    .bottom-nav button {
+      display: grid;
+      padding: 7px 2px;
+      place-items: center;
+      border: 0;
+      background: none;
+      color: #89928c;
+      font-size: 9px;
+      cursor: pointer;
+    }
+
+    .bottom-nav b { display: block; font-size: 17px; line-height: 1; }
+    .bottom-nav .active { color: var(--deep); font-weight: 850; }
+
+    .step-note {
+      margin-bottom: 17px;
+      padding: 11px 13px;
+      border-left: 4px solid var(--sun);
+      background: #fff7d9;
+      color: #675315;
+      font-size: 10px;
+      line-height: 1.5;
+    }
+
+    .field-label { display: block; margin: 17px 0 8px; font-size: 12px; font-weight: 850; }
+
+    .topic-picker {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      padding: 13px;
+      align-items: center;
+      border: 2px solid var(--bamboo);
+      border-radius: 16px 16px 16px 6px;
+      background: white;
+    }
+
+    .topic-picker strong { display: block; font-size: 12px; }
+    .topic-picker small { display: block; margin-top: 5px; color: var(--muted); font-size: 9px; }
+    .topic-picker span { color: var(--deep); font-weight: 900; }
+
+    .segmented {
+      display: flex;
+      gap: 7px;
+    }
+
+    .segmented button {
+      min-height: 38px;
+      flex: 1;
+      padding: 0 8px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: white;
+      font-size: 10px;
+      cursor: pointer;
+    }
+
+    .segmented .active {
+      border-color: var(--bamboo);
+      background: #eaf4e5;
+      color: var(--deep);
+      font-weight: 850;
+    }
+
+    .rule-list { margin-top: 8px; border-top: 1px solid var(--line); }
+    .rule-row { display: flex; min-height: 55px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+    .rule-row strong { font-size: 11px; }
+    .rule-row small { display: block; margin-top: 4px; color: var(--muted); font-size: 9px; }
+
+    .switch {
+      position: relative;
+      width: 43px;
+      height: 25px;
+      border: 0;
+      border-radius: 14px;
+      background: var(--bamboo);
+      cursor: pointer;
+    }
+
+    .switch::after {
+      position: absolute;
+      top: 3px;
+      right: 3px;
+      width: 19px;
+      height: 19px;
+      border-radius: 50%;
+      background: white;
+      content: "";
+    }
+
+    .switch.off { background: #cbd2cc; }
+    .switch.off::after { right: auto; left: 3px; }
+    .bottom-actions { position: absolute; right: 20px; bottom: 21px; left: 20px; display: grid; gap: 8px; }
+
+    .invite-card {
+      position: relative;
+      min-height: 445px;
+      overflow: hidden;
+      padding: 26px 24px;
+      border: 6px solid white;
+      background: var(--deep);
+      color: white;
+      box-shadow: 0 15px 32px rgba(31, 96, 68, .16);
+    }
+
+    .invite-card::after {
+      position: absolute;
+      right: -58px;
+      bottom: -58px;
+      width: 210px;
+      height: 210px;
+      border: 12px solid rgba(255, 255, 255, .1);
+      border-radius: 50%;
+      content: "";
+    }
+
+    .invite-brand { font-size: 11px; font-weight: 900; }
+    .invite-card h3 { width: 220px; margin: 34px 0 10px; font-size: 28px; line-height: 1.32; }
+    .invite-card p { margin: 0; color: rgba(255, 255, 255, .73); font-size: 10px; line-height: 1.55; }
+
+    .versus-pandas {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      height: 150px;
+      margin-top: 15px;
+      align-items: end;
+      justify-content: space-between;
+    }
+
+    .versus {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      margin-bottom: 37px;
+      place-items: center;
+      border: 3px solid white;
+      border-radius: 50%;
+      background: var(--sun);
+      color: #5c4707;
+      font-size: 13px;
+      font-weight: 950;
+      transform: rotate(-7deg);
+    }
+
+    .invite-code { position: relative; z-index: 2; display: flex; margin-top: 14px; align-items: center; justify-content: space-between; }
+    .invite-code span { font-size: 10px; }
+    .invite-code b { padding: 7px 10px; border: 1px solid rgba(255,255,255,.3); font-size: 12px; letter-spacing: .12em; }
+    .share-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 17px; }
+    .share-options button { display: grid; min-height: 67px; padding: 8px 3px; place-items: center; border: 1px solid var(--line); border-radius: 14px; background: white; font-size: 9px; cursor: pointer; }
+    .share-options b { display: block; font-size: 20px; }
+
+    .lobby-phone { background: radial-gradient(circle at 50% 38%, rgba(169,211,110,.28), transparent 33%), var(--paper); }
+    .lobby-title { margin: 16px 0 4px; color: var(--deep); text-align: center; font-size: 22px; }
+    .lobby-sub { margin: 0; color: var(--muted); text-align: center; font-size: 10px; }
+    .bridge { position: relative; display: flex; height: 255px; align-items: center; justify-content: space-between; }
+    .bridge::before { position: absolute; top: 145px; right: 26px; left: 26px; height: 16px; border-top: 5px solid var(--deep); border-bottom: 5px solid var(--deep); background: repeating-linear-gradient(90deg,var(--young) 0 22px,var(--deep) 22px 25px); content: ""; transform: rotate(-2deg); }
+    .player { position: relative; z-index: 2; width: 126px; text-align: center; }
+    .player .panda { display: block; margin: auto; }
+    .player strong { display: block; margin-top: 3px; font-size: 12px; }
+    .ready { display: inline-block; margin-top: 5px; padding: 4px 7px; border-radius: 9px; background:#eaf4e5; color:var(--deep); font-size:9px; font-weight:850; }
+    .ready.wait { background:#f0f1ed; color:var(--muted); }
+    .lobby-rules { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .lobby-rules div { padding: 13px 4px; border-right: 1px solid var(--line); text-align: center; }
+    .lobby-rules div:last-child { border: 0; }
+    .lobby-rules b { display: block; font-size: 13px; }
+    .lobby-rules small { color: var(--muted); font-size: 9px; }
+
+    .duel-phone { background:#f8faf4; }
+    .duel-scoreboard { display: grid; grid-template-columns: 1fr 45px 1fr; gap: 7px; align-items: center; }
+    .duel-side { padding: 9px 10px; border-left: 5px solid var(--bamboo); background: white; }
+    .duel-side.rival { border-left-color: var(--berry); text-align: right; }
+    .duel-side strong { display:block; font-size:11px; }
+    .duel-side b { color:var(--deep); font-size:18px; }
+    .duel-side.rival b { color:#af493c; }
+    .timer { display:grid; width:43px; height:43px; place-items:center; border:4px solid var(--sun); border-radius:50%; background:white; font-size:13px; font-weight:950; }
+    .duel-progress { display:flex; gap:4px; margin:14px 0 18px; }
+    .duel-progress i { height:8px; flex:1; border:1px solid #cbd8c9; background:white; transform:skewX(-8deg); }
+    .duel-progress .done { background:var(--bamboo); border-color:var(--deep); }
+    .duel-progress .current { background:var(--sun); border-color:#d8a921; }
+    .question-type { display:inline-block; padding:5px 8px; border-radius:9px; background:var(--sky); color:var(--deep); font-size:9px; font-weight:850; }
+    .question { min-height:86px; margin:13px 0 15px; font-size:20px; line-height:1.45; }
+    .answers { display:grid; gap:10px; }
+    .answer { display:grid; grid-template-columns:34px 1fr; min-height:60px; padding:9px 12px; align-items:center; border:2px solid var(--line); border-bottom-width:4px; border-radius:15px; background:white; text-align:left; cursor:pointer; }
+    .answer b { display:grid; width:27px; height:27px; place-items:center; border:2px solid #c9d1c9; border-radius:9px; color:var(--muted); font-size:10px; }
+    .answer span { font-size:11px; line-height:1.4; }
+    .answer.selected { border-color:var(--bamboo); background:#eaf4e5; }
+    .answer.selected b { border-color:var(--bamboo); background:var(--bamboo); color:white; }
+
+    .result-phone { background:radial-gradient(circle at 50% 24%,rgba(255,215,106,.48),transparent 29%),var(--paper); }
+    .result-head { text-align:center; }
+    .result-head .panda { margin:8px auto 0; width:135px; height:145px; }
+    .result-head h3 { margin:0; color:var(--deep); font-size:28px; }
+    .result-head p { margin:7px 0 0; color:var(--muted); font-size:10px; }
+    .score-strip { display:grid; grid-template-columns:1fr 72px 1fr; margin:20px 0 16px; align-items:center; text-align:center; }
+    .score-strip div { padding:12px 4px; border-top:4px solid var(--bamboo); background:white; }
+    .score-strip .opponent { border-color:var(--berry); }
+    .score-strip strong { display:block; font-size:23px; }
+    .score-strip small { color:var(--muted); font-size:9px; }
+    .score-strip b { color:var(--muted); font-size:12px; }
+    .reward-banner { display:flex; padding:13px; align-items:center; justify-content:space-between; border-left:5px solid var(--sun); background:#fff6d3; font-size:10px; }
+    .reward-banner strong { color:#6a5515; font-size:13px; }
+    .result-detail { margin-top:15px; }
+    .result-row { display:grid; grid-template-columns:1fr 55px 55px; padding:10px 0; border-bottom:1px solid var(--line); font-size:10px; }
+    .result-row span:not(:first-child) { text-align:right; font-weight:850; }
+
+    .leader-tabs { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; padding:4px; border-radius:14px; background:#edf0eb; }
+    .leader-tabs button { height:34px; border:0; border-radius:10px; background:transparent; color:var(--muted); font-size:9px; cursor:pointer; }
+    .leader-tabs .active { background:white; color:var(--deep); font-weight:850; }
+    .season { display:flex; margin:16px 0 13px; align-items:center; justify-content:space-between; }
+    .season strong { font-size:15px; }
+    .season span { color:var(--muted); font-size:9px; }
+    .podium { display:flex; height:180px; align-items:end; justify-content:center; gap:6px; border-bottom:4px solid var(--deep); }
+    .podium-place { display:flex; width:88px; flex-direction:column; align-items:center; text-align:center; }
+    .podium-place .friend-avatar { margin-bottom:6px; }
+    .podium-place strong { font-size:10px; }
+    .podium-place small { margin:3px 0 7px; color:var(--muted); font-size:8px; }
+    .block { display:grid; width:100%; height:var(--h); place-items:center; border:2px solid var(--deep); border-bottom:0; border-radius:10px 10px 0 0; background:var(--young); font-size:18px; font-weight:950; }
+    .first .block { background:var(--sun); }
+    .rank-list { margin-top:13px; }
+    .rank-row { display:grid; grid-template-columns:27px 39px 1fr auto; gap:9px; padding:9px 4px; align-items:center; border-bottom:1px solid var(--line); }
+    .rank-row.me { margin:4px -5px; padding:10px 9px; border:2px solid var(--bamboo); border-radius:14px; background:#eef7e9; }
+    .rank-row>strong { text-align:center; font-size:11px; }
+    .rank-row .friend-avatar { width:37px; height:37px; border-width:1px; font-size:16px; }
+    .rank-row div strong { display:block; font-size:10px; }
+    .rank-row div small { color:var(--muted); font-size:8px; }
+    .rank-row>b { color:var(--deep); font-size:11px; }
+
+    .member-phone { background:linear-gradient(160deg,#fff8d7 0 27%,var(--paper) 27%); }
+    .member-hero { display:grid; grid-template-columns:1fr 95px; align-items:center; margin-bottom:14px; }
+    .member-hero h3 { margin:0; color:#5e4706; font-size:25px; line-height:1.3; }
+    .member-hero p { margin:7px 0 0; color:#7c6a36; font-size:10px; line-height:1.5; }
+    .member-hero .panda { width:95px; height:103px; }
+    .billing-toggle { display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:4px; border-radius:14px; background:#eeeade; }
+    .billing-toggle button { height:35px; border:0; border-radius:10px; background:transparent; color:var(--muted); font-size:10px; cursor:pointer; }
+    .billing-toggle .active { background:white; color:#634a06; font-weight:850; }
+    .plan { position:relative; margin-top:11px; padding:14px; border:2px solid var(--line); background:white; cursor:pointer; }
+    .plan.selected { border-color:var(--deep); box-shadow:5px 6px 0 rgba(47,125,89,.13); }
+    .plan-top { display:flex; align-items:center; justify-content:space-between; }
+    .plan-top strong { font-size:14px; }
+    .plan-top b { color:var(--deep); font-size:19px; }
+    .plan-top small { color:var(--muted); font-size:9px; font-weight:500; }
+    .plan p { margin:8px 0 0; color:var(--muted); font-size:9px; line-height:1.5; }
+    .recommended { position:absolute; top:-9px; right:12px; padding:4px 7px; border-radius:8px; background:var(--sun); color:#5e4706; font-size:8px; font-weight:900; }
+    .member-note { margin-top:13px; color:var(--muted); font-size:9px; line-height:1.55; }
+
+    .quota-head { display:flex; align-items:end; justify-content:space-between; }
+    .quota-head h3 { margin:0; font-size:22px; }
+    .quota-head span { color:var(--muted); font-size:9px; }
+    .quota-meter { margin:14px 0 20px; }
+    .quota-bar { height:12px; overflow:hidden; border-radius:7px; background:#e1e6df; }
+    .quota-bar i { display:block; width:78%; height:100%; border-radius:7px; background:var(--bamboo); }
+    .quota-meta { display:flex; margin-top:7px; justify-content:space-between; color:var(--muted); font-size:9px; }
+    .pack-list { display:grid; gap:10px; }
+    .pack { display:grid; grid-template-columns:50px 1fr auto; gap:10px; padding:12px; align-items:center; border:2px solid var(--line); border-radius:16px; background:white; cursor:pointer; }
+    .pack.selected { border-color:var(--bamboo); background:#f1f8ed; }
+    .pack-icon { display:grid; width:45px; height:45px; place-items:center; border-radius:14px 14px 14px 5px; background:var(--sky); font-size:19px; }
+    .pack:nth-child(2) .pack-icon { background:#fff0ba; }
+    .pack:nth-child(3) .pack-icon { background:#f6e1df; }
+    .pack strong { display:block; font-size:11px; }
+    .pack small { display:block; margin-top:4px; color:var(--muted); font-size:8px; }
+    .pack b { color:var(--deep); font-size:13px; }
+    .cost-rule { margin-top:15px; padding:12px; border-left:4px solid var(--river); background:#eaf3f8; color:#436174; font-size:9px; line-height:1.55; }
+
+    .team-hero { padding:18px; border-radius:22px 22px 22px 7px; background:var(--deep); color:white; }
+    .team-hero h3 { margin:0; font-size:22px; line-height:1.35; }
+    .team-hero p { margin:7px 0 0; color:rgba(255,255,255,.72); font-size:10px; line-height:1.55; }
+    .team-size { display:flex; margin-top:13px; gap:7px; }
+    .team-size span { padding:6px 8px; border:1px solid rgba(255,255,255,.24); border-radius:9px; font-size:8px; }
+    .feature-list { margin-top:16px; }
+    .feature { display:grid; grid-template-columns:25px 1fr; gap:8px; padding:10px 0; border-bottom:1px solid var(--line); }
+    .feature i { display:grid; width:22px; height:22px; place-items:center; border-radius:7px; background:#eaf4e5; color:var(--deep); font-size:10px; font-style:normal; font-weight:900; }
+    .feature strong { display:block; font-size:11px; }
+    .feature small { display:block; margin-top:4px; color:var(--muted); font-size:9px; line-height:1.45; }
+    .contact-note { margin-top:14px; color:var(--muted); font-size:9px; line-height:1.55; }
+
+    .toast {
+      position: fixed;
+      z-index: 100;
+      bottom: 24px;
+      left: 50%;
+      padding: 12px 18px;
+      border-radius: 14px;
+      background: var(--ink);
+      color: white;
+      font-size: 13px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 12px);
+      transition: .2s ease;
+    }
+
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @keyframes panda-bob {
+      0%, 100% { transform: translateY(0) rotate(0); }
+      50% { transform: translateY(-3px) rotate(-1deg); }
+    }
+
+    @keyframes panda-blink {
+      0%, 42%, 46%, 100% { transform: scaleY(1); }
+      44% { transform: scaleY(.12); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .panda * { animation: none !important; }
+      .toast { transition: none; }
+    }
+
+    @media (max-width: 880px) {
+      .page-head { align-items: start; flex-direction: column; }
+      .board { grid-template-columns: minmax(330px, 390px); }
+    }
+
+    @media (min-width: 881px) and (max-width: 1260px) {
+      .board { grid-template-columns: repeat(2, minmax(330px, 390px)); }
+    }
+
+    @media (max-width: 420px) {
+      .page-head { padding: 32px 16px 18px; }
+      .board { padding: 10px 10px 48px; }
+      .phone { height: 780px; border-width: 7px; border-radius: 32px; }
+    }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute;overflow:hidden">
+    <defs>
+      <symbol id="panda-player" viewBox="0 0 120 128">
+        <g class="panda-bob">
+          <ellipse cx="60" cy="106" rx="34" ry="21" fill="#202520" />
+          <ellipse cx="60" cy="107" rx="22" ry="17" fill="#fff" />
+          <circle cx="29" cy="35" r="17" fill="#202520" />
+          <circle cx="91" cy="35" r="17" fill="#202520" />
+          <path d="M60 21c31 0 45 18 43 44-2 25-17 38-43 38S19 90 17 65C15 39 29 21 60 21z" fill="#fff" stroke="#202520" stroke-width="3.2" />
+          <ellipse cx="40" cy="59" rx="12" ry="16" fill="#202520" transform="rotate(20 40 59)" />
+          <ellipse cx="80" cy="59" rx="12" ry="16" fill="#202520" transform="rotate(-20 80 59)" />
+          <g class="panda-eye"><ellipse cx="41" cy="59" rx="4.8" ry="6.2" fill="#fff" /><circle cx="42" cy="59" r="2.2" fill="#202520" /></g>
+          <g class="panda-eye"><ellipse cx="79" cy="59" rx="4.8" ry="6.2" fill="#fff" /><circle cx="78" cy="59" r="2.2" fill="#202520" /></g>
+          <ellipse cx="31" cy="76" rx="7" ry="3.5" fill="#f5a39a" opacity=".75" />
+          <ellipse cx="89" cy="76" rx="7" ry="3.5" fill="#f5a39a" opacity=".75" />
+          <ellipse cx="60" cy="73" rx="5" ry="3.7" fill="#202520" />
+          <path d="M49 79q11 14 22 0" fill="none" stroke="#202520" stroke-width="3" stroke-linecap="round" />
+          <path d="M42 97q18 9 36 0l-3 11q-15 8-30 0z" fill="var(--scarf,#2f7d59)" />
+          <ellipse cx="28" cy="103" rx="11" ry="17" fill="#202520" transform="rotate(24 28 103)" />
+          <ellipse cx="92" cy="103" rx="11" ry="17" fill="#202520" transform="rotate(-24 92 103)" />
+        </g>
+      </symbol>
+    </defs>
+  </svg>
+
+  <header class="page-head">
+    <div>
+      <h1>社交与商业扩展</h1>
+      <p>好友对战负责带来共同学习的动力。会员和用量包负责支持高成本的 AI 能力。两个模块不会干扰基础闯关流程。</p>
+    </div>
+    <div class="page-tag">竹知岛 · P2—P3 产品储备</div>
+  </header>
+
+  <main class="board">
+    <section id="social-home">
+      <div class="screen-label"><span>1</span>好友学习广场</div>
+      <article class="phone">
+        <div class="status"><b>9:41</b><span>▮▮ ◉</span></div>
+        <div class="appbar"><button class="icon-button" aria-label="消息">♧</button><h2>一起学习</h2><button class="icon-button" data-jump="#leaderboard" aria-label="排行榜">♛</button></div>
+        <div class="content">
+          <div class="hero-social">
+            <h3>找一个朋友，来场知识对决</h3>
+            <p>双方回答同一组题。速度和正确率会共同决定结果。</p>
+            <button class="primary" data-jump="#create-duel">发起一场对战</button>
+            <svg class="panda" viewBox="0 0 120 128" role="img" aria-label="熊猫团团"><use href="#panda-player"></use></svg>
+          </div>
+          <div class="section-title"><h3>好友正在学习</h3><button data-toast="好友列表已经刷新">刷新</button></div>
+          <div class="friend-row"><span class="friend-avatar">🐼</span><div><strong>小林</strong><small>刚学完“量子纠缠是什么”</small></div><button class="challenge" data-jump="#create-duel">挑战</button></div>
+          <div class="friend-row"><span class="friend-avatar blue">🐼</span><div><strong>阿远</strong><small>在线 · 连续学习 12 天</small></div><button class="challenge" data-jump="#create-duel">挑战</button></div>
+          <div class="friend-row"><span class="friend-avatar pink">🐼</span><div><strong>小满</strong><small>今天获得了 180 XP</small></div><button class="challenge" data-jump="#create-duel">挑战</button></div>
+        </div>
+        <nav class="bottom-nav"><button><b>⌂</b>学习</button><button class="active"><b>♧</b>好友</button><button data-jump="#leaderboard"><b>♛</b>榜单</button><button data-jump="#membership"><b>◎</b>我的</button></nav>
+      </article>
+    </section>
+
+    <section id="create-duel">
+      <div class="screen-label"><span>2</span>创建好友对战</div>
+      <article class="phone">
+        <div class="status"><b>9:42</b><span>▮▮ ◉</span></div>
+        <div class="appbar"><button class="icon-button" data-jump="#social-home">‹</button><h2>设置对战</h2><span></span></div>
+        <div class="content">
+          <div class="step-note">对战不会消耗生命值。答错后，双方仍然可以查看知识讲解。</div>
+          <span class="field-label">选择题目主题</span>
+          <button class="topic-picker" data-toast="主题选择器已经打开"><span><strong>三分钟理解 RAG</strong><small>来自你的学习记录 · 5 个知识点</small></span><span>⌄</span></button>
+          <span class="field-label">题目数量</span>
+          <div class="segmented option-group"><button>3 题</button><button class="active">5 题</button><button>8 题</button></div>
+          <span class="field-label">难度</span>
+          <div class="segmented option-group"><button>入门</button><button class="active">混合</button><button>进阶</button></div>
+          <div class="rule-list">
+            <div class="rule-row"><div><strong>计入好友胜率</strong><small>本次结果会进入双方统计</small></div><button class="switch" aria-label="计入好友胜率"></button></div>
+            <div class="rule-row"><div><strong>答题后显示讲解</strong><small>每道题结束后停留 15 秒</small></div><button class="switch" aria-label="显示讲解"></button></div>
+            <div class="rule-row"><div><strong>允许观战</strong><small>共同好友可以观看比赛</small></div><button class="switch off" aria-label="允许观战"></button></div>
+          </div>
+          <div class="bottom-actions"><button class="primary" data-jump="#invite-friend">创建并邀请好友</button></div>
+        </div>
+      </article>
+    </section>
+
+    <section id="invite-friend">
+      <div class="screen-label"><span>3</span>发送对战邀请</div>
+      <article class="phone">
+        <div class="status"><b>9:43</b><span>▮▮ ◉</span></div>
+        <div class="appbar"><button class="icon-button" data-jump="#create-duel">‹</button><h2>邀请好友</h2><span></span></div>
+        <div class="content">
+          <div class="invite-card">
+            <div class="invite-brand">竹知岛 · 好友对战</div>
+            <h3>敢来比比谁更懂 RAG 吗？</h3>
+            <p>五道题，约五分钟。接受邀请后即可开始。</p>
+            <div class="versus-pandas"><svg class="panda" viewBox="0 0 120 128"><use href="#panda-player"></use></svg><span class="versus">对决</span><svg class="panda rival" viewBox="0 0 120 128"><use href="#panda-player"></use></svg></div>
+            <div class="invite-code"><span>房间有效期还有 29:48</span><b>846 217</b></div>
+          </div>
+          <div class="share-options"><button data-toast="微信好友选择器将在小程序中打开"><b>☘</b>微信好友</button><button data-toast="邀请卡已经生成"><b>▣</b>生成邀请卡</button><button data-toast="房间码已复制"><b>⌘</b>复制房间码</button></div>
+          <div class="bottom-actions"><button class="primary" data-jump="#duel-lobby">模拟好友已加入</button></div>
+        </div>
+      </article>
+    </section>
+
+    <section id="duel-lobby">
+      <div class="screen-label"><span>4</span>双人对战房间</div>
+      <article class="phone lobby-phone">
+        <div class="status"><b>9:44</b><span>▮▮ ◉</span></div>
+        <div class="appbar"><button class="icon-button" data-jump="#invite-friend">‹</button><h2>房间 846 217</h2><button class="icon-button" data-toast="房间规则已经打开">?</button></div>
+        <div class="content">
+          <h3 class="lobby-title">两位学习者已经就位</h3><p class="lobby-sub">房主点击开始后，双方会同时看到第一题。</p>
+          <div class="bridge"><div class="player"><svg class="panda" viewBox="0 0 120 128"><use href="#panda-player"></use></svg><strong>你</strong><span class="ready">已经准备</span></div><div class="player"><svg class="panda rival" viewBox="0 0 120 128"><use href="#panda-player"></use></svg><strong>小林</strong><span class="ready">已经准备</span></div></div>
+          <div class="lobby-rules"><div><b>5 题</b><small>题目数量</small></div><div><b>15 秒</b><small>单题时间</small></div><div><b>混合</b><small>题目难度</small></div></div>
+          <div class="section-title"><h3>本场主题</h3><button>更换</button></div>
+          <div class="topic-picker"><span><strong>三分钟理解 RAG</strong><small>双方都学习过这个主题</small></span><span>✓</span></div>
+          <div class="bottom-actions"><button class="primary" data-jump="#duel-question">开始对战</button></div>
+        </div>
+      </article>
+    </section>
+
+    <section id="duel-question">
+      <div class="screen-label"><span>5</span>实时对战答题</div>
+      <article class="phone duel-phone">
+        <div class="status"><b>9:45</b><span>▮▮ ◉</span></div>
+        <div class="appbar"><button class="icon-button" data-toast="退出需要双方确认">×</button><h2>RAG 好友对战</h2><span></span></div>
+        <div class="content">
+          <div class="duel-scoreboard"><div class="duel-side"><strong>你</strong><b>220</b></div><div class="timer">12</div><div class="duel-side rival"><strong>小林</strong><b>180</b></div></div>
+          <div class="duel-progress"><i class="done"></i><i class="done"></i><i class="current"></i><i></i><i></i></div>
+          <span class="question-type">第 3 题 · 单选</span>
+          <h3 class="question">RAG 中的检索器主要负责什么？</h3>
+          <div class="answers"><button class="answer"><b>A</b><span>从资料中找出和问题有关的内容</span></button><button class="answer"><b>B</b><span>重新训练整个语言模型</span></button><button class="answer"><b>C</b><span>判断用户是否拥有会员</span></button><button class="answer"><b>D</b><span>把所有文档直接显示给用户</span></button></div>
+          <div class="bottom-actions"><button class="primary" id="duelSubmit" disabled>提交答案</button></div>
+        </div>
+      </article>
+    </section>
+
+    <section id="duel-result">
+      <div class="screen-label"><span>6</span>对战结果与复盘</div>
+      <article class="phone result-phone">
+        <div class="status"><b>9:49</b><span>▮▮ ◉</span></div>
+        <div class="appbar"><button class="icon-button" data-jump="#social-home">×</button><h2>对战结果</h2><button class="icon-button" data-toast="战绩分享卡已经生成">↗</button></div>
+        <div class="content">
+          <div class="result-head"><svg class="panda" viewBox="0 0 120 128"><use href="#panda-player"></use></svg><h3>你赢得了这场对战</h3><p>你在检索流程相关题目上的判断更准确。</p></div>
+          <div class="score-strip"><div><strong>460</strong><small>你 · 4 题正确</small></div><b>比</b><div class="opponent"><strong>380</strong><small>小林 · 3 题正确</small></div></div>
+          <div class="reward-banner"><span>本场获得</span><strong>＋90 XP · 3 片竹叶</strong></div>
+          <div class="result-detail"><div class="result-row"><span>正确率</span><span>80%</span><span>60%</span></div><div class="result-row"><span>平均用时</span><span>7.2 秒</span><span>8.6 秒</span></div><div class="result-row"><span>连续答对</span><span>3 题</span><span>2 题</span></div></div>
+          <div class="bottom-actions"><button class="primary" data-toast="再来一局邀请已经发给小林">邀请再来一局</button><button class="secondary" data-jump="#leaderboard">查看好友榜</button></div>
+        </div>
+      </article>
+    </section>
+
+    <section id="leaderboard">
+      <div class="screen-label"><span>7</span>知识领域排行榜</div>
+      <article class="phone">
+        <div class="status"><b>9:50</b><span>▮▮ ◉</span></div>
+        <div class="appbar"><button class="icon-button" data-jump="#social-home">‹</button><h2>本周排行榜</h2><button class="icon-button" data-toast="榜单规则已经打开">?</button></div>
+        <div class="content">
+          <div class="leader-tabs option-group"><button class="active">好友榜</button><button>全服榜</button><button>学校榜</button></div>
+          <div class="season"><strong>人工智能领域</strong><span>周一更新 · 还剩 1 天</span></div>
+          <div class="podium"><div class="podium-place"><span class="friend-avatar blue">🐼</span><strong>阿远</strong><small>1,920 XP</small><div class="block" style="--h:73px">2</div></div><div class="podium-place first"><span class="friend-avatar">🐼</span><strong>一颗青竹</strong><small>2,150 XP</small><div class="block" style="--h:96px">1</div></div><div class="podium-place"><span class="friend-avatar pink">🐼</span><strong>小满</strong><small>1,760 XP</small><div class="block" style="--h:58px">3</div></div></div>
+          <div class="rank-list"><div class="rank-row"><strong>4</strong><span class="friend-avatar">🐼</span><div><strong>小林</strong><small>本周学习 8 次</small></div><b>1,540 XP</b></div><div class="rank-row me"><strong>5</strong><span class="friend-avatar blue">🐼</span><div><strong>你</strong><small>距离第 4 名还差 70 XP</small></div><b>1,470 XP</b></div><div class="rank-row"><strong>6</strong><span class="friend-avatar pink">🐼</span><div><strong>夏天</strong><small>本周学习 6 次</small></div><b>1,320 XP</b></div></div>
+          <div class="step-note" style="margin-top:14px">排行榜只统计有效学习关卡。重复刷同一组题不会增加榜单 XP。</div>
+        </div>
+        <nav class="bottom-nav"><button><b>⌂</b>学习</button><button data-jump="#social-home"><b>♧</b>好友</button><button class="active"><b>♛</b>榜单</button><button data-jump="#membership"><b>◎</b>我的</button></nav>
+      </article>
+    </section>
+
+    <section id="membership">
+      <div class="screen-label"><span>8</span>会员方案</div>
+      <article class="phone member-phone">
+        <div class="status"><b>9:51</b><span>▮▮ ◉</span></div>
+        <div class="appbar"><button class="icon-button" data-jump="#social-home">‹</button><h2>竹知岛会员</h2><button class="icon-button" data-toast="已恢复历史购买记录">↻</button></div>
+        <div class="content">
+          <div class="member-hero"><div><h3>把更多时间<br>留给真正的学习</h3><p>会员提供更长资料解析和更深的个人复盘。</p></div><svg class="panda" viewBox="0 0 120 128"><use href="#panda-player"></use></svg></div>
+          <div class="billing-toggle option-group"><button>按月</button><button class="active">按年 · 省 36%</button></div>
+          <div class="plan"><div class="plan-top"><strong>免费版</strong><b>¥0</b></div><p>每天生成 3 次 · 单个文档 10 MB · 基础学习报告</p></div>
+          <div class="plan selected"><span class="recommended">适合长期学习</span><div class="plan-top"><strong>竹林会员</strong><b>¥128 <small>/ 年</small></b></div><p>每天生成 30 次 · 单个文档 100 MB · 深度报告 · 错题自动复习</p></div>
+          <div class="plan"><div class="plan-top"><strong>专业会员</strong><b>¥298 <small>/ 年</small></b></div><p>更高 AI 用量 · 多知识库 · 高难度题目 · 报告批量导出</p></div>
+          <p class="member-note">会员不会提高排行榜分数。会员到期前 3 天，系统会提醒你是否续费。</p>
+          <div class="bottom-actions"><button class="primary" data-toast="这是原型页面，暂未连接微信支付">选择竹林会员</button><button class="secondary" data-jump="#quota-pack">只购买 AI 用量</button></div>
+        </div>
+      </article>
+    </section>
+
+    <section id="quota-pack">
+      <div class="screen-label"><span>9</span>AI 用量与团队方案</div>
+      <article class="phone">
+        <div class="status"><b>9:52</b><span>▮▮ ◉</span></div>
+        <div class="appbar"><button class="icon-button" data-jump="#membership">‹</button><h2>AI 用量</h2><button class="icon-button" data-jump="#team-plan" aria-label="团队方案">♧</button></div>
+        <div class="content">
+          <div class="quota-head"><h3>本月还剩<br>22 次深度解析</h3><span>9 月 30 日重置</span></div>
+          <div class="quota-meter"><div class="quota-bar"><i></i></div><div class="quota-meta"><span>已经使用 78 次</span><span>会员每月共 100 次</span></div></div>
+          <div class="section-title"><h3>临时增加解析额度</h3><button data-toast="用量说明已经打开">计费说明</button></div>
+          <div class="pack-list option-group"><button class="pack"><span class="pack-icon">🌱</span><span><strong>轻量补充包</strong><small>20 次 · 90 天内有效</small></span><b>¥12</b></button><button class="pack selected"><span class="pack-icon">🎋</span><span><strong>常用解析包</strong><small>60 次 · 180 天内有效</small></span><b>¥28</b></button><button class="pack"><span class="pack-icon">▤</span><span><strong>大文档解析包</strong><small>10 个超大文档 · 180 天内有效</small></span><b>¥38</b></button></div>
+          <div class="cost-rule">系统会在解析前显示预计消耗量。生成失败或用户主动取消时，系统不会扣除额度。</div>
+          <div class="section-title"><h3>团队和机构</h3><button data-jump="#team-plan">查看方案</button></div>
+          <div class="topic-picker"><span><strong>班级与企业学习空间</strong><small>统一知识库、任务发布和学习统计</small></span><span>›</span></div>
+          <div class="bottom-actions"><button class="primary" data-toast="这是原型页面，暂未连接微信支付">购买常用解析包</button></div>
+        </div>
+      </article>
+    </section>
+
+    <section id="team-plan">
+      <div class="screen-label"><span>10</span>团队与机构方案</div>
+      <article class="phone">
+        <div class="status"><b>9:53</b><span>▮▮ ◉</span></div>
+        <div class="appbar"><button class="icon-button" data-jump="#quota-pack">‹</button><h2>团队学习空间</h2><span></span></div>
+        <div class="content">
+          <div class="team-hero"><h3>把内部资料变成<br>团队学习关卡</h3><p>管理员可以维护知识库、发布学习任务，并查看团队掌握情况。</p><div class="team-size"><span>适合学校</span><span>适合企业</span><span>20 人起</span></div></div>
+          <div class="feature-list"><div class="feature"><i>✓</i><div><strong>团队私人知识库</strong><small>管理员可以设置资料范围和成员权限。</small></div></div><div class="feature"><i>✓</i><div><strong>统一发布学习任务</strong><small>管理员可以设置截止时间和通过标准。</small></div></div><div class="feature"><i>✓</i><div><strong>团队学习统计</strong><small>管理员可以查看完成率和常见薄弱点。</small></div></div><div class="feature"><i>✓</i><div><strong>内容安全与审计记录</strong><small>系统会记录资料变更和题目生成来源。</small></div></div></div>
+          <span class="field-label">预计使用人数</span><div class="segmented option-group"><button class="active">20—50 人</button><button>51—200 人</button><button>200 人以上</button></div>
+          <p class="contact-note">团队方案需要根据人数、存储量和 AI 用量单独报价。当前原型不会收集联系人信息。</p>
+          <div class="bottom-actions"><button class="primary" data-toast="后续版本会接入企业咨询表单">了解团队报价</button><button class="secondary" data-jump="#social-home">返回学习广场</button></div>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script>
+    const toast = document.querySelector('#toast');
+    let toastTimer;
+
+    function showToast(message) {
+      clearTimeout(toastTimer);
+      toast.textContent = message;
+      toast.classList.add('show');
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+    }
+
+    document.querySelectorAll('[data-toast]').forEach((button) => {
+      button.addEventListener('click', () => showToast(button.dataset.toast));
+    });
+
+    document.querySelectorAll('[data-jump]').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.querySelector(button.dataset.jump)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+
+    document.querySelectorAll('.option-group').forEach((group) => {
+      group.querySelectorAll('button').forEach((button) => {
+        button.addEventListener('click', () => {
+          group.querySelectorAll('button').forEach((item) => item.classList.remove('active', 'selected'));
+          button.classList.add(button.classList.contains('pack') || button.classList.contains('plan') ? 'selected' : 'active');
+        });
+      });
+    });
+
+    document.querySelectorAll('.switch').forEach((button) => {
+      button.addEventListener('click', () => button.classList.toggle('off'));
+    });
+
+    document.querySelectorAll('.plan').forEach((plan) => {
+      plan.addEventListener('click', () => {
+        document.querySelectorAll('.plan').forEach((item) => item.classList.remove('selected'));
+        plan.classList.add('selected');
+      });
+    });
+
+    const answers = [...document.querySelectorAll('.answer')];
+    const duelSubmit = document.querySelector('#duelSubmit');
+    answers.forEach((answer) => {
+      answer.addEventListener('click', () => {
+        answers.forEach((item) => item.classList.remove('selected'));
+        answer.classList.add('selected');
+        duelSubmit.disabled = false;
+      });
+    });
+
+    duelSubmit.addEventListener('click', () => {
+      document.querySelector('#duel-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  </script>
+</body>
+</html>
