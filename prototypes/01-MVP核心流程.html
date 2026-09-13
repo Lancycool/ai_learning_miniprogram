@@ -1,0 +1,1368 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#2f7d59" />
+  <title>竹知岛 · MVP 核心流程原型</title>
+  <style>
+    :root {
+      --bamboo: #2f7d59;
+      --bamboo-dark: #1f6044;
+      --bamboo-light: #a9d36e;
+      --paper: #fffdf5;
+      --paper-deep: #f5f1df;
+      --ink: #202520;
+      --muted: #68736b;
+      --sun: #ffd76a;
+      --sun-deep: #efb82c;
+      --berry: #e96655;
+      --sky: #dff2ef;
+      --line: #d9dfd3;
+      --white: #fff;
+      --shadow: 0 18px 45px rgba(45, 68, 52, 0.13);
+      font-family: "MiSans", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background:
+        linear-gradient(rgba(47, 125, 89, 0.055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(47, 125, 89, 0.055) 1px, transparent 1px),
+        var(--paper-deep);
+      background-size: 28px 28px;
+    }
+
+    button, textarea { font: inherit; }
+
+    button { color: inherit; }
+
+    button:focus-visible,
+    textarea:focus-visible {
+      outline: 4px solid rgba(255, 215, 106, 0.78);
+      outline-offset: 3px;
+    }
+
+    .prototype-header {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 32px;
+      max-width: 1420px;
+      margin: 0 auto;
+      padding: 46px 28px 26px;
+    }
+
+    .prototype-header h1 {
+      margin: 0 0 10px;
+      color: var(--bamboo-dark);
+      font-size: clamp(30px, 4vw, 52px);
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+
+    .prototype-header p {
+      max-width: 700px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    .legend {
+      display: flex;
+      flex: 0 0 auto;
+      gap: 16px;
+      padding-bottom: 4px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .legend span { display: inline-flex; align-items: center; gap: 7px; }
+    .legend i { width: 11px; height: 11px; border-radius: 50%; background: var(--bamboo); }
+    .legend span:last-child i { background: var(--sun); }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(330px, 390px));
+      justify-content: center;
+      gap: 38px 30px;
+      padding: 18px 28px 72px;
+    }
+
+    .screen-wrap { min-width: 0; }
+
+    .screen-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 44px;
+      margin: 0 4px 10px;
+      color: var(--bamboo-dark);
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .screen-label span {
+      display: grid;
+      width: 26px;
+      height: 26px;
+      place-items: center;
+      border: 2px solid var(--bamboo);
+      border-radius: 50%;
+      background: var(--paper);
+      font-size: 12px;
+    }
+
+    .phone {
+      position: relative;
+      height: 812px;
+      overflow: hidden;
+      border: 9px solid var(--ink);
+      border-radius: 38px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+    }
+
+    .phone::before {
+      position: absolute;
+      z-index: 10;
+      top: 8px;
+      left: 50%;
+      width: 92px;
+      height: 22px;
+      border-radius: 0 0 15px 15px;
+      background: var(--ink);
+      content: "";
+      transform: translateX(-50%);
+    }
+
+    .statusbar {
+      position: relative;
+      z-index: 3;
+      display: flex;
+      height: 44px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 5px 19px 0;
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .status-icons { letter-spacing: 2px; }
+
+    .appbar {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      height: 48px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+    }
+
+    .appbar-title { font-size: 16px; font-weight: 850; }
+
+    .icon-button {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(47, 125, 89, 0.1);
+      cursor: pointer;
+    }
+
+    .icon-button.ghost { background: transparent; }
+
+    .content {
+      position: relative;
+      z-index: 1;
+      height: calc(100% - 92px);
+      padding: 16px 20px 22px;
+    }
+
+    .scroll-content { overflow-y: auto; scrollbar-width: none; }
+    .scroll-content::-webkit-scrollbar { display: none; }
+
+    .home-phone {
+      background:
+        radial-gradient(circle at 110% 10%, rgba(169, 211, 110, 0.35), transparent 38%),
+        var(--paper);
+    }
+
+    .brand { display: flex; align-items: center; gap: 9px; font-weight: 900; }
+
+    .brand-mark {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      overflow: hidden;
+      border: 2px solid var(--bamboo-dark);
+      border-radius: 50% 50% 50% 30%;
+      background: var(--sun);
+      box-shadow: 2px 3px 0 rgba(31, 96, 68, .18);
+    }
+
+    .brand-mark svg { width: 31px; height: 31px; }
+
+    .mini-xp {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 10px;
+      border: 1px solid #ead087;
+      border-radius: 18px;
+      background: #fff7d3;
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .home-intro {
+      display: grid;
+      grid-template-columns: 1fr 116px;
+      align-items: center;
+      margin: 12px 0 16px;
+    }
+
+    .home-intro h2 {
+      margin: 0;
+      color: var(--bamboo-dark);
+      font-size: 31px;
+      line-height: 1.18;
+      letter-spacing: -0.045em;
+    }
+
+    .home-intro p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .panda {
+      --panda-scale: 1;
+      position: relative;
+      width: calc(106px * var(--panda-scale));
+      height: calc(116px * var(--panda-scale));
+      margin: auto;
+      overflow: visible;
+    }
+
+    .panda .panda-bob {
+      transform-box: fill-box;
+      transform-origin: center bottom;
+      animation: panda-breathe 3.2s ease-in-out infinite;
+    }
+
+    .panda .eye-dot,
+    .panda .happy-eye {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: panda-blink 4.8s ease-in-out infinite;
+    }
+
+    .panda .arm-wave {
+      transform-box: fill-box;
+      transform-origin: 25% 75%;
+    }
+
+    .panda.happy .arm-wave {
+      animation: panda-wave 2.6s ease-in-out infinite;
+    }
+
+    .panda.thinking .panda-bob {
+      animation: panda-think 2.5s ease-in-out infinite;
+    }
+
+    .panda .thought-dot {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: thought-pop 1.4s ease-in-out infinite alternate;
+    }
+
+    .panda .thought-dot.delay { animation-delay: .35s; }
+
+    .panda .celebrate-star {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: star-pop 1.8s ease-in-out infinite;
+    }
+
+    .panda .celebrate-star.delay { animation-delay: .55s; }
+
+    @keyframes panda-breathe {
+      0%, 100% { transform: translateY(0) rotate(0); }
+      50% { transform: translateY(-2px) rotate(-1deg); }
+    }
+
+    @keyframes panda-blink {
+      0%, 42%, 46%, 100% { transform: scaleY(1); }
+      44% { transform: scaleY(.12); }
+    }
+
+    @keyframes panda-wave {
+      0%, 55%, 100% { transform: rotate(0); }
+      65% { transform: rotate(-16deg); }
+      76% { transform: rotate(10deg); }
+      87% { transform: rotate(-12deg); }
+    }
+
+    @keyframes panda-think {
+      0%, 100% { transform: translateY(0) rotate(-1deg); }
+      50% { transform: translateY(-3px) rotate(2deg); }
+    }
+
+    @keyframes thought-pop {
+      from { opacity: .35; transform: scale(.72); }
+      to { opacity: 1; transform: scale(1.08); }
+    }
+
+    @keyframes star-pop {
+      0%, 100% { opacity: .35; transform: scale(.72) rotate(0); }
+      50% { opacity: 1; transform: scale(1.08) rotate(12deg); }
+    }
+
+    .input-panel {
+      position: relative;
+      padding: 16px;
+      border: 2px solid var(--bamboo);
+      border-radius: 22px 22px 22px 7px;
+      background: white;
+      box-shadow: 6px 7px 0 rgba(47, 125, 89, 0.13);
+    }
+
+    .input-panel label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .input-panel textarea {
+      width: 100%;
+      height: 91px;
+      resize: none;
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+      font-size: 15px;
+      line-height: 1.55;
+    }
+
+    .input-panel textarea::placeholder { color: #9aa49e; }
+
+    .input-tools {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .attach {
+      border: 0;
+      background: none;
+      color: var(--bamboo-dark);
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .examples { margin-top: 18px; }
+
+    .examples > p {
+      margin: 0 0 9px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .chip {
+      padding: 8px 11px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: rgba(255, 255, 255, 0.72);
+      color: #526159;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .primary-button,
+    .secondary-button {
+      display: flex;
+      width: 100%;
+      min-height: 50px;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border-radius: 17px;
+      font-size: 15px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .primary-button {
+      border: 2px solid var(--bamboo-dark);
+      border-bottom-width: 5px;
+      background: var(--bamboo);
+      color: white;
+    }
+
+    .primary-button:active { transform: translateY(2px); border-bottom-width: 3px; }
+
+    .secondary-button {
+      border: 2px solid var(--line);
+      border-bottom-width: 4px;
+      background: white;
+    }
+
+    .home-cta { margin-top: 17px; }
+
+    .safe-note {
+      margin: 10px 0 0;
+      color: var(--muted);
+      text-align: center;
+      font-size: 10px;
+    }
+
+    .loading-phone {
+      background:
+        linear-gradient(160deg, rgba(223, 242, 239, 0.9), transparent 48%),
+        var(--paper);
+    }
+
+    .loading-center {
+      display: flex;
+      height: 100%;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding-bottom: 45px;
+      text-align: center;
+    }
+
+    .plant-scene {
+      position: relative;
+      width: 220px;
+      height: 230px;
+    }
+
+    .plant-scene .panda { position: absolute; bottom: 0; left: 3px; --panda-scale: 1.15; }
+
+    .bamboo-plant {
+      position: absolute;
+      right: 34px;
+      bottom: 9px;
+      width: 28px;
+      height: 165px;
+      border: 3px solid var(--bamboo-dark);
+      border-radius: 13px 13px 4px 4px;
+      background: repeating-linear-gradient(to bottom, var(--bamboo-light) 0 35px, var(--bamboo-dark) 35px 39px);
+      transform-origin: bottom;
+      animation: grow 1.8s ease-in-out infinite alternate;
+    }
+
+    .bamboo-plant::before,
+    .bamboo-plant::after {
+      position: absolute;
+      width: 42px;
+      height: 22px;
+      border-radius: 90% 0 90% 0;
+      background: var(--bamboo);
+      content: "";
+    }
+
+    .bamboo-plant::before { top: 22px; left: -38px; transform: rotate(15deg); }
+    .bamboo-plant::after { top: 67px; left: 20px; transform: rotate(-16deg) scaleX(-1); }
+
+    .loading-center h2 { margin: 14px 0 8px; color: var(--bamboo-dark); font-size: 24px; }
+    .loading-center > p { width: 260px; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
+
+    .loading-steps {
+      width: 275px;
+      margin-top: 25px;
+      text-align: left;
+    }
+
+    .loading-step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 34px;
+      color: #8d978f;
+      font-size: 12px;
+    }
+
+    .loading-step::before {
+      display: grid;
+      width: 20px;
+      height: 20px;
+      flex: 0 0 auto;
+      place-items: center;
+      border: 2px solid #cfd6cf;
+      border-radius: 50%;
+      content: "";
+    }
+
+    .loading-step.done { color: var(--ink); font-weight: 700; }
+    .loading-step.done::before { border-color: var(--bamboo); background: var(--bamboo); color: white; content: "✓"; }
+    .loading-step.active { color: var(--bamboo-dark); font-weight: 850; }
+    .loading-step.active::before { border: 5px solid var(--bamboo-light); background: white; }
+
+    .quiet-action {
+      margin-top: 22px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .quiz-phone { background: #fbfcf5; }
+
+    .quiz-top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 2px;
+    }
+
+    .bamboo-progress { display: flex; flex: 1; gap: 4px; }
+
+    .bamboo-progress i {
+      height: 10px;
+      flex: 1;
+      border: 1px solid #cbd8c9;
+      background: white;
+      transform: skewX(-7deg);
+    }
+
+    .bamboo-progress i:first-child { border-radius: 8px 1px 1px 8px; }
+    .bamboo-progress i:last-child { border-radius: 1px 8px 8px 1px; }
+    .bamboo-progress i.done { border-color: var(--bamboo-dark); background: var(--bamboo); }
+    .bamboo-progress i.current { border-color: var(--sun-deep); background: var(--sun); }
+
+    .heart { color: var(--berry); font-size: 16px; font-weight: 900; }
+
+    .question-meta {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 24px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .type-badge {
+      padding: 5px 9px;
+      border-radius: 10px;
+      background: var(--sky);
+      color: var(--bamboo-dark);
+    }
+
+    .question-title {
+      min-height: 93px;
+      margin: 15px 0 18px;
+      font-size: 22px;
+      line-height: 1.48;
+      letter-spacing: -0.025em;
+    }
+
+    .option-list { display: grid; gap: 11px; }
+
+    .option {
+      display: grid;
+      grid-template-columns: 38px 1fr;
+      align-items: center;
+      min-height: 65px;
+      padding: 10px 13px;
+      border: 2px solid var(--line);
+      border-bottom-width: 4px;
+      border-radius: 16px;
+      background: white;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .option-key {
+      display: grid;
+      width: 30px;
+      height: 30px;
+      place-items: center;
+      border: 2px solid #c9d1c9;
+      border-radius: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .option-text { font-size: 13px; line-height: 1.45; }
+
+    .option.selected { border-color: var(--bamboo); background: #eef7e9; }
+    .option.selected .option-key { border-color: var(--bamboo); background: var(--bamboo); color: white; }
+    .option.correct { border-color: var(--bamboo); background: #eef7e9; }
+    .option.correct .option-key { border-color: var(--bamboo); background: var(--bamboo); color: white; }
+    .option.wrong { border-color: var(--berry); background: #fff0ed; }
+    .option.wrong .option-key { border-color: var(--berry); background: var(--berry); color: white; }
+
+    .quiz-submit { position: absolute; right: 20px; bottom: 23px; left: 20px; }
+    .primary-button:disabled { border-color: #b9c3bb; background: #cbd2cc; cursor: not-allowed; }
+
+    .feedback-phone .content { padding-top: 5px; }
+
+    .feedback-stage {
+      position: relative;
+      display: flex;
+      height: 176px;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .feedback-stage::before,
+    .feedback-stage::after {
+      position: absolute;
+      width: 12px;
+      height: 30px;
+      border-radius: 8px;
+      background: var(--sun);
+      content: "";
+      transform: rotate(25deg);
+    }
+
+    .feedback-stage::before { top: 30px; left: 55px; }
+    .feedback-stage::after { top: 48px; right: 57px; transform: rotate(-36deg); }
+    .feedback-stage .panda { --panda-scale: 1.25; }
+
+    .feedback-heading {
+      margin: 4px 0 8px;
+      color: var(--bamboo-dark);
+      text-align: center;
+      font-size: 27px;
+    }
+
+    .reward-line {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .reward-pill {
+      padding: 7px 11px;
+      border: 1px solid #e8c76e;
+      border-radius: 14px;
+      background: #fff5c4;
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .explanation {
+      padding: 16px;
+      border-left: 5px solid var(--bamboo);
+      background: #eef7e9;
+    }
+
+    .explanation.wrong-note { border-left-color: var(--berry); background: #fff1ee; }
+
+    .explanation h3 { margin: 0 0 8px; font-size: 14px; }
+    .explanation p { margin: 0; color: #4e5c53; font-size: 13px; line-height: 1.7; }
+
+    .knowledge-tag {
+      display: inline-block;
+      margin-top: 11px;
+      padding: 5px 8px;
+      border: 1px solid rgba(47, 125, 89, 0.24);
+      border-radius: 9px;
+      color: var(--bamboo-dark);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .bottom-stack { position: absolute; right: 20px; bottom: 22px; left: 20px; display: grid; gap: 9px; }
+
+    .wrong-title { color: #a84539; }
+
+    .answer-correction {
+      margin: 10px 0 17px;
+      padding: 12px 14px;
+      border: 1px solid #edd0c9;
+      border-radius: 13px;
+      background: white;
+      font-size: 12px;
+    }
+
+    .answer-correction strong { color: var(--bamboo-dark); }
+
+    .complete-phone {
+      background:
+        radial-gradient(circle at 50% 22%, rgba(255, 215, 106, 0.48), transparent 29%),
+        var(--paper);
+    }
+
+    .complete-content { display: flex; flex-direction: column; align-items: center; text-align: center; }
+
+    .flag-scene { position: relative; width: 230px; height: 237px; margin-top: 15px; }
+    .flag-scene .panda { position: absolute; bottom: 15px; left: 53px; --panda-scale: 1.38; }
+    .flag-pole { position: absolute; right: 49px; bottom: 12px; width: 6px; height: 176px; border-radius: 4px; background: var(--bamboo-dark); }
+    .flag { position: absolute; top: 13px; left: 6px; width: 88px; height: 55px; padding-top: 13px; border-radius: 4px 14px 14px 4px; background: var(--sun); color: #654b05; font-size: 15px; font-weight: 950; }
+
+    .complete-content h2 { margin: 4px 0 7px; color: var(--bamboo-dark); font-size: 29px; }
+    .complete-content > p { margin: 0; color: var(--muted); font-size: 13px; }
+
+    .reward-board {
+      display: grid;
+      width: 100%;
+      grid-template-columns: repeat(3, 1fr);
+      margin-top: 22px;
+      border: 2px solid #e2d5a7;
+      border-radius: 18px;
+      background: #fffaf0;
+    }
+
+    .reward-board div { padding: 14px 4px; border-right: 1px solid #e7dec1; }
+    .reward-board div:last-child { border: 0; }
+    .reward-board strong { display: block; font-size: 19px; }
+    .reward-board small { color: var(--muted); font-size: 10px; }
+
+    .report-phone { background: #f8faf4; }
+
+    .report-hero {
+      display: grid;
+      grid-template-columns: 1fr 117px;
+      align-items: center;
+      margin-bottom: 16px;
+      padding: 15px 10px 15px 17px;
+      border-radius: 21px 21px 21px 6px;
+      background: var(--bamboo);
+      color: white;
+    }
+
+    .report-hero h2 { margin: 0 0 7px; font-size: 19px; line-height: 1.35; }
+    .report-hero p { margin: 0; color: rgba(255,255,255,.78); font-size: 11px; line-height: 1.5; }
+
+    .score-ring {
+      display: grid;
+      width: 92px;
+      height: 92px;
+      place-items: center;
+      border-radius: 50%;
+      background: conic-gradient(var(--sun) 0 80%, rgba(255,255,255,.2) 80% 100%);
+    }
+
+    .score-ring div {
+      display: grid;
+      width: 70px;
+      height: 70px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--bamboo);
+      font-size: 23px;
+      font-weight: 950;
+    }
+
+    .report-section { margin-top: 16px; }
+    .report-section h3 { margin: 0 0 10px; font-size: 14px; }
+
+    .three-lines {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: learning;
+    }
+
+    .three-lines li {
+      display: grid;
+      grid-template-columns: 26px 1fr;
+      gap: 8px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line);
+      color: #445048;
+      font-size: 12px;
+      line-height: 1.55;
+      counter-increment: learning;
+    }
+
+    .three-lines li::before {
+      display: grid;
+      width: 23px;
+      height: 23px;
+      place-items: center;
+      border-radius: 7px;
+      background: var(--sky);
+      color: var(--bamboo-dark);
+      content: counter(learning);
+      font-size: 10px;
+      font-weight: 900;
+    }
+
+    .mastery-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    .mastery-box {
+      min-height: 93px;
+      padding: 12px;
+      border-top: 4px solid var(--bamboo);
+      background: white;
+    }
+
+    .mastery-box.weak { border-top-color: var(--sun-deep); }
+    .mastery-box strong { font-size: 11px; }
+    .mastery-box p { margin: 7px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+
+    .report-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 18px; }
+    .report-actions button { min-height: 44px; font-size: 12px; }
+
+    .poster-phone { background: #dfeee2; }
+
+    .poster-wrap { display: flex; height: 100%; flex-direction: column; align-items: center; }
+
+    .poster {
+      position: relative;
+      width: 293px;
+      min-height: 550px;
+      overflow: hidden;
+      padding: 30px 25px 23px;
+      border: 7px solid white;
+      background:
+        linear-gradient(90deg, transparent 49%, rgba(47, 125, 89, .08) 50%, transparent 51%),
+        var(--paper);
+      box-shadow: 0 18px 35px rgba(31, 96, 68, .16);
+    }
+
+    .poster::after {
+      position: absolute;
+      z-index: 0;
+      right: -46px;
+      bottom: 118px;
+      width: 62px;
+      height: 205px;
+      border: 4px solid var(--bamboo-dark);
+      border-radius: 40px;
+      background: repeating-linear-gradient(to bottom, var(--bamboo-light) 0 45px, var(--bamboo-dark) 45px 50px);
+      content: "";
+      opacity: .72;
+      transform: rotate(-7deg);
+    }
+
+    .poster > * { position: relative; z-index: 1; }
+
+    .poster-brand { color: var(--bamboo-dark); font-size: 12px; font-weight: 900; }
+    .poster h2 { width: 205px; margin: 42px 0 18px; font-size: 29px; line-height: 1.34; letter-spacing: -0.04em; }
+    .poster-line { width: 35px; height: 5px; margin-bottom: 18px; border-radius: 5px; background: var(--sun); }
+    .poster-topic { color: var(--muted); font-size: 11px; }
+    .poster-score { margin-top: 11px; color: var(--bamboo-dark); font-size: 13px; font-weight: 900; }
+    .poster .panda { position: absolute; bottom: 84px; left: 19px; --panda-scale: 1.12; }
+
+    .qr {
+      position: absolute;
+      right: 24px;
+      bottom: 25px;
+      display: grid;
+      width: 72px;
+      height: 72px;
+      place-items: center;
+      border: 5px solid white;
+      background:
+        linear-gradient(90deg, var(--ink) 50%, transparent 50%) 0 0/14px 14px,
+        linear-gradient(var(--ink) 50%, transparent 50%) 0 0/14px 14px,
+        var(--paper);
+      color: transparent;
+    }
+
+    .poster-foot { position: absolute; bottom: 29px; left: 24px; color: var(--muted); font-size: 9px; }
+
+    .poster-tip { margin: 17px 0 0; color: var(--bamboo-dark); font-size: 11px; font-weight: 800; }
+
+    .error-phone {
+      background:
+        radial-gradient(circle at 50% 32%, rgba(233, 102, 85, .1), transparent 30%),
+        var(--paper);
+    }
+
+    .error-content {
+      display: flex;
+      height: 100%;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding-bottom: 60px;
+      text-align: center;
+    }
+
+    .error-content .panda { --panda-scale: 1.4; }
+    .error-content h2 { margin: 24px 0 9px; font-size: 23px; }
+    .error-content > p { width: 270px; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
+
+    .error-reason {
+      width: 100%;
+      margin: 22px 0 20px;
+      padding: 13px 14px;
+      border-left: 4px solid var(--berry);
+      background: #fff1ee;
+      color: #764c46;
+      text-align: left;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .toast {
+      position: fixed;
+      z-index: 100;
+      bottom: 24px;
+      left: 50%;
+      padding: 12px 18px;
+      border-radius: 14px;
+      background: var(--ink);
+      color: white;
+      font-size: 13px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 12px);
+      transition: .2s ease;
+    }
+
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @keyframes grow {
+      from { transform: scaleY(.92); }
+      to { transform: scaleY(1.03); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .bamboo-plant { animation: none; }
+      .panda *,
+      .panda .panda-bob,
+      .panda .eye-dot,
+      .panda .happy-eye,
+      .panda .arm-wave,
+      .panda .thought-dot,
+      .panda .celebrate-star { animation: none !important; }
+      .toast { transition: none; }
+    }
+
+    @media (max-width: 880px) {
+      .prototype-header { align-items: start; flex-direction: column; }
+      .board { grid-template-columns: minmax(330px, 390px); }
+    }
+
+    @media (min-width: 881px) and (max-width: 1260px) {
+      .board { grid-template-columns: repeat(2, minmax(330px, 390px)); }
+    }
+
+    @media (max-width: 420px) {
+      .prototype-header { padding: 32px 16px 18px; }
+      .board { padding: 10px 10px 48px; }
+      .phone { height: 780px; border-width: 7px; border-radius: 32px; }
+    }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute;overflow:hidden">
+    <defs>
+      <symbol id="panda-logo" viewBox="0 0 40 40">
+        <path d="M27 6c4-4 8-3 9-3-1 5-4 8-8 9" fill="#2f7d59" stroke="#1f6044" stroke-width="1.5" stroke-linecap="round" />
+        <circle cx="11" cy="12" r="6" fill="#202520" />
+        <circle cx="29" cy="12" r="6" fill="#202520" />
+        <ellipse cx="20" cy="22" rx="15" ry="14" fill="#fff" stroke="#202520" stroke-width="2" />
+        <ellipse cx="14" cy="21" rx="4.4" ry="5.5" fill="#202520" transform="rotate(18 14 21)" />
+        <ellipse cx="26" cy="21" rx="4.4" ry="5.5" fill="#202520" transform="rotate(-18 26 21)" />
+        <circle cx="14.7" cy="20.5" r="1.7" fill="#fff" />
+        <circle cx="25.3" cy="20.5" r="1.7" fill="#fff" />
+        <ellipse cx="20" cy="27" rx="2.2" ry="1.6" fill="#202520" />
+        <path d="M17 29.5q3 3 6 0" fill="none" stroke="#202520" stroke-width="1.6" stroke-linecap="round" />
+      </symbol>
+
+      <symbol id="panda-happy" viewBox="0 0 120 128">
+        <g class="panda-bob">
+          <path class="celebrate-star" d="M12 22l2.5 5 5.5.8-4 3.8.9 5.4-4.9-2.6L7.1 37l.9-5.4-4-3.8 5.5-.8z" fill="#ffd76a" />
+          <path class="celebrate-star delay" d="M104 12l1.8 3.6 4 .6-2.9 2.8.7 4-3.6-1.9-3.6 1.9.7-4-2.9-2.8 4-.6z" fill="#a9d36e" />
+          <ellipse cx="60" cy="106" rx="34" ry="21" fill="#202520" />
+          <ellipse cx="60" cy="107" rx="22" ry="17" fill="#fff" />
+          <circle cx="29" cy="35" r="17" fill="#202520" />
+          <circle cx="91" cy="35" r="17" fill="#202520" />
+          <path d="M60 21c31 0 45 18 43 44-2 25-17 38-43 38S19 90 17 65C15 39 29 21 60 21z" fill="#fff" stroke="#202520" stroke-width="3.2" />
+          <ellipse cx="40" cy="59" rx="12" ry="16" fill="#202520" transform="rotate(20 40 59)" />
+          <ellipse cx="80" cy="59" rx="12" ry="16" fill="#202520" transform="rotate(-20 80 59)" />
+          <g class="eye-dot"><ellipse cx="41" cy="59" rx="4.8" ry="6.2" fill="#fff" /><circle cx="42" cy="59" r="2.2" fill="#202520" /><circle cx="43" cy="57.5" r=".8" fill="#fff" /></g>
+          <g class="eye-dot"><ellipse cx="79" cy="59" rx="4.8" ry="6.2" fill="#fff" /><circle cx="78" cy="59" r="2.2" fill="#202520" /><circle cx="79" cy="57.5" r=".8" fill="#fff" /></g>
+          <ellipse cx="31" cy="76" rx="7" ry="3.5" fill="#f5a39a" opacity=".72" />
+          <ellipse cx="89" cy="76" rx="7" ry="3.5" fill="#f5a39a" opacity=".72" />
+          <ellipse cx="60" cy="73" rx="5" ry="3.7" fill="#202520" />
+          <path d="M48 79q12 15 24 0" fill="#fff" stroke="#202520" stroke-width="3" stroke-linecap="round" />
+          <path d="M54 87q6 5 12 0" fill="#e96655" stroke="#202520" stroke-width="1.5" stroke-linejoin="round" />
+          <path d="M42 97q18 9 36 0l-3 11q-15 8-30 0z" fill="#2f7d59" />
+          <ellipse cx="28" cy="103" rx="11" ry="17" fill="#202520" transform="rotate(24 28 103)" />
+          <g class="arm-wave"><ellipse cx="94" cy="95" rx="11" ry="19" fill="#202520" transform="rotate(-35 94 95)" /><path d="M99 77q8-9 12-19" fill="none" stroke="#202520" stroke-width="6" stroke-linecap="round" /></g>
+        </g>
+      </symbol>
+
+      <symbol id="panda-thinking" viewBox="0 0 120 128">
+        <g class="panda-bob">
+          <circle class="thought-dot" cx="104" cy="22" r="4" fill="#2f7d59" />
+          <circle class="thought-dot delay" cx="111" cy="10" r="7" fill="#a9d36e" />
+          <ellipse cx="60" cy="106" rx="34" ry="21" fill="#202520" />
+          <ellipse cx="60" cy="107" rx="22" ry="17" fill="#fff" />
+          <circle cx="29" cy="35" r="17" fill="#202520" />
+          <circle cx="91" cy="35" r="17" fill="#202520" />
+          <path d="M60 21c31 0 45 18 43 44-2 25-17 38-43 38S19 90 17 65C15 39 29 21 60 21z" fill="#fff" stroke="#202520" stroke-width="3.2" />
+          <ellipse cx="40" cy="59" rx="12" ry="16" fill="#202520" transform="rotate(20 40 59)" />
+          <ellipse cx="80" cy="59" rx="12" ry="16" fill="#202520" transform="rotate(-20 80 59)" />
+          <g class="eye-dot"><ellipse cx="41" cy="59" rx="4.8" ry="6.2" fill="#fff" /><circle cx="43" cy="58" r="2.2" fill="#202520" /><circle cx="44" cy="56.5" r=".8" fill="#fff" /></g>
+          <g class="eye-dot"><ellipse cx="79" cy="59" rx="4.8" ry="6.2" fill="#fff" /><circle cx="81" cy="58" r="2.2" fill="#202520" /><circle cx="82" cy="56.5" r=".8" fill="#fff" /></g>
+          <ellipse cx="60" cy="73" rx="5" ry="3.7" fill="#202520" />
+          <ellipse cx="60" cy="83" rx="4.7" ry="5.2" fill="#fff" stroke="#202520" stroke-width="2.4" />
+          <path d="M42 97q18 9 36 0l-3 11q-15 8-30 0z" fill="#2f7d59" />
+          <ellipse cx="28" cy="103" rx="11" ry="17" fill="#202520" transform="rotate(24 28 103)" />
+          <ellipse cx="90" cy="91" rx="10" ry="18" fill="#202520" transform="rotate(33 90 91)" />
+          <circle cx="83" cy="77" r="7" fill="#202520" />
+        </g>
+      </symbol>
+
+      <symbol id="panda-sad" viewBox="0 0 120 128">
+        <g class="panda-bob">
+          <ellipse cx="60" cy="106" rx="34" ry="21" fill="#202520" />
+          <ellipse cx="60" cy="107" rx="22" ry="17" fill="#fff" />
+          <circle cx="29" cy="35" r="17" fill="#202520" />
+          <circle cx="91" cy="35" r="17" fill="#202520" />
+          <path d="M60 21c31 0 45 18 43 44-2 25-17 38-43 38S19 90 17 65C15 39 29 21 60 21z" fill="#fff" stroke="#202520" stroke-width="3.2" />
+          <ellipse cx="40" cy="59" rx="12" ry="16" fill="#202520" transform="rotate(20 40 59)" />
+          <ellipse cx="80" cy="59" rx="12" ry="16" fill="#202520" transform="rotate(-20 80 59)" />
+          <g class="eye-dot"><ellipse cx="41" cy="59" rx="4.8" ry="6.2" fill="#fff" /><circle cx="42" cy="60" r="2.2" fill="#202520" /><circle cx="43" cy="58.5" r=".8" fill="#fff" /></g>
+          <g class="eye-dot"><ellipse cx="79" cy="59" rx="4.8" ry="6.2" fill="#fff" /><circle cx="78" cy="60" r="2.2" fill="#202520" /><circle cx="79" cy="58.5" r=".8" fill="#fff" /></g>
+          <path d="M33 43l12 2M87 43l-12 2" stroke="#202520" stroke-width="2.5" stroke-linecap="round" />
+          <ellipse cx="31" cy="76" rx="7" ry="3.5" fill="#f5a39a" opacity=".5" />
+          <ellipse cx="89" cy="76" rx="7" ry="3.5" fill="#f5a39a" opacity=".5" />
+          <ellipse cx="60" cy="73" rx="5" ry="3.7" fill="#202520" />
+          <path d="M51 87q9-9 18 0" fill="none" stroke="#202520" stroke-width="2.8" stroke-linecap="round" />
+          <path d="M42 97q18 9 36 0l-3 11q-15 8-30 0z" fill="#2f7d59" />
+          <ellipse cx="28" cy="103" rx="11" ry="17" fill="#202520" transform="rotate(24 28 103)" />
+          <ellipse cx="92" cy="103" rx="11" ry="17" fill="#202520" transform="rotate(-24 92 103)" />
+        </g>
+      </symbol>
+    </defs>
+  </svg>
+  <header class="prototype-header">
+    <div>
+      <h1>竹知岛</h1>
+      <p>AI 闯关学习小程序 · MVP 核心流程原型。用户可以输入一个知识主题，完成五道互动题目，并得到一份个人复盘报告。</p>
+    </div>
+    <div class="legend" aria-label="原型说明">
+      <span><i></i>主流程</span>
+      <span><i></i>即时奖励</span>
+    </div>
+  </header>
+
+  <main class="board">
+    <section class="screen-wrap" id="screen-home">
+      <div class="screen-label"><span>1</span>输入学习内容</div>
+      <article class="phone home-phone">
+        <div class="statusbar"><b>9:41</b><span class="status-icons">▮▮ ◉</span></div>
+        <div class="appbar">
+          <div class="brand"><span class="brand-mark"><svg viewBox="0 0 40 40" aria-hidden="true"><use href="#panda-logo"></use></svg></span>竹知岛</div>
+          <div class="mini-xp">☀ 120 XP</div>
+        </div>
+        <div class="content">
+          <div class="home-intro">
+            <div>
+              <h2>今天想闯过<br />什么知识？</h2>
+              <p>你给团团一个主题，团团把它变成五道小关卡。</p>
+            </div>
+            <svg class="panda happy" viewBox="0 0 120 128" role="img" aria-label="开心的熊猫团团"><use href="#panda-happy"></use></svg>
+          </div>
+          <div class="input-panel">
+            <label for="topicInput">输入一句话或一段文字</label>
+            <textarea id="topicInput" maxlength="2000" placeholder="例如：我想弄懂 RAG 和普通搜索有什么区别"></textarea>
+            <div class="input-tools">
+              <button class="attach" type="button" data-toast="文档和链接导入将在下一版开放">＋ 文档或链接</button>
+              <span id="charCount">0 / 2000</span>
+            </div>
+          </div>
+          <div class="examples">
+            <p>没有想法？你可以从这里开始</p>
+            <div class="chips">
+              <button class="chip" type="button">为什么天空是蓝色？</button>
+              <button class="chip" type="button">三分钟理解 RAG</button>
+              <button class="chip" type="button">咖啡为什么能提神？</button>
+            </div>
+          </div>
+          <button class="primary-button home-cta" id="generateButton" type="button">让团团生成关卡 <span>➜</span></button>
+          <p class="safe-note">AI 内容可能有误，重要知识请再核对。</p>
+        </div>
+      </article>
+    </section>
+
+    <section class="screen-wrap" id="screen-loading">
+      <div class="screen-label"><span>2</span>AI 生成关卡</div>
+      <article class="phone loading-phone">
+        <div class="statusbar"><b>9:41</b><span class="status-icons">▮▮ ◉</span></div>
+        <div class="appbar"><button class="icon-button ghost" type="button" aria-label="返回">‹</button><div class="appbar-title">准备关卡</div><span></span></div>
+        <div class="content">
+          <div class="loading-center">
+            <div class="plant-scene">
+              <svg class="panda thinking" viewBox="0 0 120 128" role="img" aria-label="正在思考的熊猫团团"><use href="#panda-thinking"></use></svg>
+              <div class="bamboo-plant"></div>
+            </div>
+            <h2>团团正在种下关卡</h2>
+            <p>系统正在整理“RAG 和普通搜索的区别”，预计还需要 8 秒。</p>
+            <div class="loading-steps">
+              <div class="loading-step done">找到主题里的核心概念</div>
+              <div class="loading-step done">整理常见误区</div>
+              <div class="loading-step active">生成 5 道闯关题</div>
+            </div>
+            <button class="quiet-action" type="button" data-toast="已取消生成">取消生成</button>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="screen-wrap" id="screen-question">
+      <div class="screen-label"><span>3</span>选择答案</div>
+      <article class="phone quiz-phone">
+        <div class="statusbar"><b>9:41</b><span class="status-icons">▮▮ ◉</span></div>
+        <div class="appbar"><button class="icon-button ghost" type="button" aria-label="退出">×</button><div class="appbar-title">RAG 入门闯关</div><div class="mini-xp">☀ 120</div></div>
+        <div class="content">
+          <div class="quiz-top">
+            <div class="bamboo-progress" aria-label="已完成 2 题，共 5 题"><i class="done"></i><i class="done"></i><i class="current"></i><i></i><i></i></div>
+            <span class="heart">♥ 3</span>
+          </div>
+          <div class="question-meta"><span class="type-badge">单选题</span><span>第 3 / 5 题</span></div>
+          <h2 class="question-title">RAG 在回答问题前，最关键的一步是什么？</h2>
+          <div class="option-list" id="interactiveOptions">
+            <button class="option" type="button" data-key="A"><span class="option-key">A</span><span class="option-text">先从外部资料中找到相关内容</span></button>
+            <button class="option" type="button" data-key="B"><span class="option-key">B</span><span class="option-text">把模型参数全部重新训练一次</span></button>
+            <button class="option" type="button" data-key="C"><span class="option-key">C</span><span class="option-text">随机选择一段文字作为答案</span></button>
+            <button class="option" type="button" data-key="D"><span class="option-key">D</span><span class="option-text">关闭模型已有的知识能力</span></button>
+          </div>
+          <div class="quiz-submit"><button class="primary-button" id="checkButton" type="button" disabled>检查答案</button></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="screen-wrap" id="screen-correct">
+      <div class="screen-label"><span>4</span>答对反馈</div>
+      <article class="phone feedback-phone">
+        <div class="statusbar"><b>9:42</b><span class="status-icons">▮▮ ◉</span></div>
+        <div class="appbar"><button class="icon-button ghost" type="button">×</button><div class="appbar-title">第 3 题讲解</div><div class="mini-xp">☀ 140</div></div>
+        <div class="content">
+          <div class="feedback-stage">
+            <svg class="panda happy" viewBox="0 0 120 128" role="img" aria-label="庆祝答对的熊猫团团"><use href="#panda-happy"></use></svg>
+          </div>
+          <h2 class="feedback-heading">答对了，竹子长高啦！</h2>
+          <div class="reward-line"><span class="reward-pill">＋20 XP</span><span class="reward-pill">连续答对 2 题</span></div>
+          <div class="explanation">
+            <h3>为什么选 A？</h3>
+            <p>RAG 会先检索和问题有关的外部资料。模型随后会结合这些资料生成答案。这个过程可以减少只靠模型记忆带来的错误。</p>
+            <span class="knowledge-tag">知识点：检索增强生成</span>
+          </div>
+          <div class="bottom-stack"><button class="primary-button" type="button" data-toast="准备进入第 4 题">继续下一题</button></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="screen-wrap" id="screen-wrong">
+      <div class="screen-label"><span>5</span>答错反馈</div>
+      <article class="phone feedback-phone">
+        <div class="statusbar"><b>9:42</b><span class="status-icons">▮▮ ◉</span></div>
+        <div class="appbar"><button class="icon-button ghost" type="button">×</button><div class="appbar-title">第 3 题讲解</div><div class="mini-xp">☀ 120</div></div>
+        <div class="content">
+          <div class="feedback-stage">
+            <svg class="panda sad" viewBox="0 0 120 128" role="img" aria-label="耐心讲解的熊猫团团"><use href="#panda-sad"></use></svg>
+          </div>
+          <h2 class="feedback-heading wrong-title">这一步容易混淆</h2>
+          <div class="answer-correction">你的答案：<s>B 重新训练模型</s><br />正确答案：<strong>A 先检索相关内容</strong></div>
+          <div class="explanation wrong-note">
+            <h3>团团帮你理一遍</h3>
+            <p>RAG 不会在每次提问时重新训练模型。它会先找到相关资料，再把资料和问题一起交给模型。它更像“带资料回答”。</p>
+            <span class="knowledge-tag">已加入本轮重点复习</span>
+          </div>
+          <div class="bottom-stack"><button class="primary-button" type="button" data-toast="准备进入第 4 题">我明白了，继续</button></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="screen-wrap" id="screen-complete">
+      <div class="screen-label"><span>6</span>完成闯关</div>
+      <article class="phone complete-phone">
+        <div class="statusbar"><b>9:46</b><span class="status-icons">▮▮ ◉</span></div>
+        <div class="appbar"><span></span><div class="appbar-title">闯关完成</div><button class="icon-button ghost" type="button">×</button></div>
+        <div class="content complete-content">
+          <div class="flag-scene">
+            <svg class="panda happy" viewBox="0 0 120 128" role="img" aria-label="举旗庆祝的熊猫团团"><use href="#panda-happy"></use></svg>
+            <div class="flag-pole"><div class="flag">通关！</div></div>
+          </div>
+          <h2>你闯过了 RAG 入门</h2>
+          <p>五节竹子已经全部点亮。</p>
+          <div class="reward-board">
+            <div><strong>4 / 5</strong><small>答对题数</small></div>
+            <div><strong>80%</strong><small>正确率</small></div>
+            <div><strong>＋80</strong><small>本次 XP</small></div>
+          </div>
+          <div class="bottom-stack">
+            <button class="primary-button" type="button" data-jump="#screen-report">查看复盘报告</button>
+            <button class="secondary-button" type="button" data-jump="#screen-home">回到首页</button>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="screen-wrap" id="screen-report">
+      <div class="screen-label"><span>7</span>学习复盘报告</div>
+      <article class="phone report-phone">
+        <div class="statusbar"><b>9:46</b><span class="status-icons">▮▮ ◉</span></div>
+        <div class="appbar"><button class="icon-button ghost" type="button">‹</button><div class="appbar-title">本次复盘</div><button class="icon-button" type="button" data-jump="#screen-poster" aria-label="分享">↗</button></div>
+        <div class="content scroll-content">
+          <div class="report-hero">
+            <div><h2>你已经理解了<br />RAG 的基本流程</h2><p>你需要再区分“检索”和“训练”。</p></div>
+            <div class="score-ring"><div>80%</div></div>
+          </div>
+          <section class="report-section">
+            <h3>三句话带走今天的知识</h3>
+            <ol class="three-lines">
+              <li>RAG 会先检索外部资料，再让模型生成回答。</li>
+              <li>外部资料可以补充新知识，也可以提供可核对的依据。</li>
+              <li>RAG 不能保证答案正确，资料质量仍然很重要。</li>
+            </ol>
+          </section>
+          <section class="report-section">
+            <h3>你的掌握情况</h3>
+            <div class="mastery-grid">
+              <div class="mastery-box"><strong>掌握得不错</strong><p>RAG 基本流程<br />外部资料的作用</p></div>
+              <div class="mastery-box weak"><strong>建议再看看</strong><p>检索与训练的区别<br />资料质量问题</p></div>
+            </div>
+          </section>
+          <section class="report-section">
+            <h3>团团的复习建议</h3>
+            <div class="explanation"><p>明天用自己的话解释一次 RAG。三天后再做一轮易错题。</p></div>
+          </section>
+          <div class="report-actions">
+            <button class="secondary-button" type="button" data-toast="已准备一组重点复习题">再练一次</button>
+            <button class="primary-button" type="button" data-jump="#screen-poster">生成分享卡</button>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="screen-wrap" id="screen-poster">
+      <div class="screen-label"><span>8</span>生成分享卡</div>
+      <article class="phone poster-phone">
+        <div class="statusbar"><b>9:47</b><span class="status-icons">▮▮ ◉</span></div>
+        <div class="appbar"><button class="icon-button ghost" type="button">‹</button><div class="appbar-title">分享学习成果</div><span></span></div>
+        <div class="content">
+          <div class="poster-wrap">
+            <div class="poster" aria-label="学习成果分享海报">
+              <div class="poster-brand">竹知岛 · 今日闯关</div>
+              <h2>知识不是背下来的，是一步一步走懂的。</h2>
+              <div class="poster-line"></div>
+              <div class="poster-topic">我刚刚闯过</div>
+              <div class="poster-score">《三分钟理解 RAG》 · 掌握度 80%</div>
+              <svg class="panda happy" viewBox="0 0 120 128" aria-hidden="true"><use href="#panda-happy"></use></svg>
+              <div class="poster-foot">和团团一起，把知识变成关卡</div>
+              <div class="qr">小程序码</div>
+            </div>
+            <p class="poster-tip">长按图片保存，或发送给微信好友</p>
+            <div class="bottom-stack"><button class="primary-button" type="button" data-toast="分享卡已保存到相册">保存到相册</button></div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="screen-wrap" id="screen-error">
+      <div class="screen-label"><span>9</span>生成失败与重试</div>
+      <article class="phone error-phone">
+        <div class="statusbar"><b>9:42</b><span class="status-icons">▮▮ ◉</span></div>
+        <div class="appbar"><button class="icon-button ghost" type="button">‹</button><div class="appbar-title">准备关卡</div><span></span></div>
+        <div class="content">
+          <div class="error-content">
+            <svg class="panda sad" viewBox="0 0 120 128" role="img" aria-label="遇到问题的熊猫团团"><use href="#panda-sad"></use></svg>
+            <h2>这次没有种出关卡</h2>
+            <p>系统没有得到完整的题目。你的学习内容不会丢失。</p>
+            <div class="error-reason"><strong>你可以这样处理：</strong><br />检查网络后重试，或把主题写得更具体一些。</div>
+            <button class="primary-button" type="button" data-toast="正在重新生成关卡">重新生成</button>
+            <button class="quiet-action" type="button" data-jump="#screen-home">返回修改内容</button>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const topicInput = document.querySelector('#topicInput');
+    const charCount = document.querySelector('#charCount');
+    const generateButton = document.querySelector('#generateButton');
+    const options = [...document.querySelectorAll('#interactiveOptions .option')];
+    const checkButton = document.querySelector('#checkButton');
+    const toast = document.querySelector('#toast');
+    let selectedAnswer = '';
+    let toastTimer;
+
+    function showToast(message) {
+      window.clearTimeout(toastTimer);
+      toast.textContent = message;
+      toast.classList.add('show');
+      toastTimer = window.setTimeout(() => toast.classList.remove('show'), 1800);
+    }
+
+    function jumpTo(selector) {
+      document.querySelector(selector)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    topicInput.addEventListener('input', () => {
+      charCount.textContent = `${topicInput.value.length} / 2000`;
+    });
+
+    document.querySelectorAll('.chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        topicInput.value = chip.textContent.trim();
+        topicInput.dispatchEvent(new Event('input'));
+        topicInput.focus();
+      });
+    });
+
+    generateButton.addEventListener('click', () => {
+      if (!topicInput.value.trim()) {
+        showToast('请先告诉团团你想学什么');
+        topicInput.focus();
+        return;
+      }
+      jumpTo('#screen-loading');
+    });
+
+    options.forEach((option) => {
+      option.addEventListener('click', () => {
+        options.forEach((item) => item.classList.remove('selected'));
+        option.classList.add('selected');
+        selectedAnswer = option.dataset.key;
+        checkButton.disabled = false;
+      });
+    });
+
+    checkButton.addEventListener('click', () => {
+      jumpTo(selectedAnswer === 'A' ? '#screen-correct' : '#screen-wrong');
+    });
+
+    document.querySelectorAll('[data-jump]').forEach((button) => {
+      button.addEventListener('click', () => jumpTo(button.dataset.jump));
+    });
+
+    document.querySelectorAll('[data-toast]').forEach((button) => {
+      button.addEventListener('click', () => showToast(button.dataset.toast));
+    });
+  </script>
+</body>
+</html>
