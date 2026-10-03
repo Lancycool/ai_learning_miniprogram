@@ -10,6 +10,7 @@ from app.db.base import utc_now
 from app.db.models import AnswerRecord, AttemptQuestion, KnowledgeDomain, LearningAttempt, LearningReport, MistakeRecord, Question, Quiz, User, UserDailyStat, XpTransaction
 from app.services.auth_service import public_id
 from app.services.learning_rules import calculate_mastery, next_review_state, update_streak, xp_for_answer
+from app.models.web_search import search_view
 
 
 def question_view(question: Question, reveal: bool = False) -> dict:
@@ -57,7 +58,7 @@ class LearningService:
                 "advice": report.advice_json,
                 "share_quote": report.share_quote,
             }
-        return {"attempt_id": attempt.public_id, "title": quiz.title if quiz else "错题复习", "quiz_id": quiz.public_id if quiz else None, "attempt_type": attempt.attempt_type, "status": attempt.status, "current_sequence": attempt.current_sequence, "correct_count": attempt.correct_count, "total_count": attempt.total_count, "accuracy": attempt.accuracy, "earned_xp": attempt.earned_xp, "started_at": attempt.started_at, "completed_at": attempt.completed_at, "report": report_data, "questions": items}
+        return {"attempt_id": attempt.public_id, "title": quiz.title if quiz else "错题复习", "quiz_id": quiz.public_id if quiz else None, "attempt_type": attempt.attempt_type, "status": attempt.status, "current_sequence": attempt.current_sequence, "correct_count": attempt.correct_count, "total_count": attempt.total_count, "accuracy": attempt.accuracy, "earned_xp": attempt.earned_xp, "started_at": attempt.started_at, "completed_at": attempt.completed_at, "report": report_data, "questions": items, "web_search": search_view(quiz.web_search_metadata_json, reveal=attempt.status == "completed") if quiz else None}
 
     async def submit_answer(self, user: User, attempt_public_id: str, question_public_id: str, selected: list[str], duration_ms: int, key: str) -> dict:
         attempt = await self.db.scalar(select(LearningAttempt).where(LearningAttempt.public_id == attempt_public_id, LearningAttempt.user_id == user.id))

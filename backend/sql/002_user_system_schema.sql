@@ -188,6 +188,7 @@ CREATE TABLE `quizzes` (
   `generation_status` varchar(16) NOT NULL,
   `model_name` varchar(64) DEFAULT NULL,
   `prompt_version` varchar(32) DEFAULT NULL,
+  `web_search_metadata_json` json DEFAULT NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
   PRIMARY KEY (`id`),

@@ -8,6 +8,7 @@ import { clearSession, getSession, saveAnswers, saveReport } from '@/store/sessi
 import type { AnswerRecord, AnswerResult } from '@/types/api'
 import { questionTypeLabel } from '@/utils/quiz'
 import './index.scss'
+import WebSearchInfo from '@/components/WebSearchInfo'
 
 type QuizView = 'question' | 'feedback' | 'complete'
 
@@ -158,6 +159,7 @@ export default function QuizPage() {
   return (
     <View className='page-shell quiz-page'>
       <View className='appbar'><Text className='icon-button' onClick={leaveQuiz}>×</Text><Text className='appbar-title quiz-app-title'>{quiz.title}</Text><View className='mini-xp'>☀ {initial.baseXp + earnedXp}</View></View>
+      <WebSearchInfo metadata={quiz.web_search} />
       <View className='quiz-top'>
         <View className='bamboo-progress'>
           {quiz.questions.map((item, index) => <View key={item.question_id} className={`progress-piece ${index < questionIndex ? 'done' : index === questionIndex ? 'current' : ''}`} />)}

@@ -71,6 +71,7 @@ class Quiz(TimestampMixin, Base):
     generation_status: Mapped[str] = mapped_column(String(16), default="ready", nullable=False)
     model_name: Mapped[str | None] = mapped_column(String(64))
     prompt_version: Mapped[str | None] = mapped_column(String(32))
+    web_search_metadata_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     questions: Mapped[list["Question"]] = relationship(back_populates="quiz", order_by="Question.sequence_no", cascade="all, delete-orphan")
 
 

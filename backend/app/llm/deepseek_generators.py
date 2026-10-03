@@ -7,7 +7,7 @@ from app.core.config import Settings
 from app.core.exceptions import GenerationError, ReportGenerationError
 from app.models.quiz import QuizDraft, QuizGenerateRequest, ScoreSummary
 from app.models.report import ReportGenerateRequest, ReportNarrative
-from app.prompts.quiz_prompt import QUIZ_PROMPT
+from app.prompts.quiz_prompt import QUIZ_PROMPT, QUIZ_WEB_PROMPT
 from app.prompts.report_prompt import REPORT_PROMPT
 
 
@@ -27,17 +27,30 @@ class DeepSeekQuizGenerator:
         prompt = QUIZ_PROMPT.partial(
             output_schema=json.dumps(QuizDraft.model_json_schema(), ensure_ascii=False)
         )
-        self.chain = prompt | model.with_structured_output(
+        output = model.with_structured_output(
             QuizDraft,
             method="json_mode",
             include_raw=True,
         )
+        self.chain = prompt | output
+        self.web_chain = QUIZ_WEB_PROMPT.partial(
+            output_schema=json.dumps(QuizDraft.model_json_schema(), ensure_ascii=False)
+        ) | output
 
     async def generate(self, request: QuizGenerateRequest) -> QuizDraft:
+        return await self._generate(request, self.chain)
+
+    async def generate_with_context(self, request: QuizGenerateRequest, reference_context: str) -> QuizDraft:
+        return await self._generate(request, self.web_chain, reference_context)
+
+    async def _generate(self, request: QuizGenerateRequest, chain, reference_context: str | None = None) -> QuizDraft:
+        payload = request.model_dump(exclude={"enable_web_search"})
+        if reference_context is not None:
+            payload["reference_context"] = reference_context
         last_error: Exception | None = None
         for _ in range(self.max_attempts):
             try:
-                result: dict[str, Any] = await self.chain.ainvoke(request.model_dump())
+                result: dict[str, Any] = await chain.ainvoke(payload)
                 if result.get("parsing_error") is not None or result.get("parsed") is None:
                     raise ValueError(
                         f"模型结构化输出解析失败: {result.get('parsing_error')!r}"

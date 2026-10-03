@@ -20,6 +20,8 @@ dependencies = [
   "pydantic-settings>=2.10,<3",
   "python-dotenv>=1.1,<2",
   "uvicorn[standard]>=0.35,<1",
+  "langchain-tavily==0.2.18",
+  "aiohttp>=3.14,<4",
 ]
 
 [dependency-groups]

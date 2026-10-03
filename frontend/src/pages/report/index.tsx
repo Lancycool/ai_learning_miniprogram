@@ -1,13 +1,24 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Taro, { useShareAppMessage } from '@tarojs/taro'
 import { Button, Text, View } from '@tarojs/components'
 import { getSession, startSession } from '@/store/session'
-import { createAttempt } from '@/services/api'
+import { createAttempt, getAttempt } from '@/services/api'
+import WebSearchInfo from '@/components/WebSearchInfo'
+import type { WebSearchMetadata } from '@/types/api'
 import './index.scss'
 
 export default function ReportPage() {
   const session = getSession()
   const { quiz, report } = session
+  const [searchMetadata, setSearchMetadata] = useState<WebSearchMetadata | null | undefined>(quiz?.web_search)
+  const [completed, setCompleted] = useState(false)
+  useEffect(() => {
+    let active = true
+    if (quiz?.attempt_id) getAttempt(quiz.attempt_id).then((data) => {
+      if (active) { setSearchMetadata(data.web_search); setCompleted(data.status === 'completed') }
+    }).catch(() => undefined)
+    return () => { active = false }
+  }, [quiz?.attempt_id])
 
   useEffect(() => {
     if (!quiz || !report) Taro.reLaunch({ url: '/pages/index/index' })
@@ -22,7 +33,7 @@ export default function ReportPage() {
 
   async function replay(): Promise<void> {
     const attempt = await createAttempt(quiz!.quiz_id, 'replay')
-    startSession({ ...quiz!, attempt_id: attempt.attempt_id, questions: attempt.questions })
+    startSession({ ...quiz!, attempt_id: attempt.attempt_id, questions: attempt.questions, web_search: attempt.web_search })
     Taro.redirectTo({ url: '/pages/quiz/index' })
   }
 
@@ -30,6 +41,7 @@ export default function ReportPage() {
     <View className='page-shell report-page'>
       <View className='appbar'><Text className='icon-button' onClick={() => Taro.navigateBack()}>‹</Text><Text className='appbar-title'>本次复盘</Text><Text className='icon-button' onClick={() => Taro.navigateTo({ url: '/pages/poster/index' })}>↗</Text></View>
       <View className='report-content'>
+        <WebSearchInfo metadata={searchMetadata} completed={completed} />
         <View className='report-hero'>
           <View className='report-hero-copy'><Text className='report-hero-title'>{report.accuracy >= 80 ? '你已经理解了' : '你正在理解'}{`\n`}{quiz.title.replace('闯关', '').trim()}</Text><Text className='report-hero-description'>{report.weak_points.length ? `你需要再看看“${report.weak_points[0]}”。` : '你已经掌握了本轮的全部知识点。'}</Text></View>
           <View className='score-ring' style={{ background: `conic-gradient(#ffd76a 0 ${report.accuracy}%, rgba(255,255,255,.2) ${report.accuracy}% 100%)` }}><Text>{report.accuracy}%</Text></View>

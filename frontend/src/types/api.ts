@@ -25,6 +25,19 @@ export interface Quiz {
   summary: string
   user_input: string
   questions: Question[]
+  web_search?: WebSearchMetadata | null
+}
+
+export interface WebSearchMetadata {
+  requested: boolean
+  enabled: boolean
+  status: 'success' | 'fallback' | 'disabled'
+  context_used: boolean
+  sources: { source_id: string; title: string; url: string; content: string; published_at?: string | null }[]
+  effective_params: Record<string, unknown>
+  attempt_count: number
+  fallback_reason: string | null
+  prompt_version: string
 }
 
 export interface UserProfile { user_id: string; nickname: string; avatar_url: string; profile_completed: boolean; xp_total: number; current_streak_days: number; joined_at: string }

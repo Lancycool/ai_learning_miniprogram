@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import AliasChoices, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,6 +11,17 @@ class Settings(BaseSettings):
     model: str = Field(default="deepseek-flash", alias="MODEL")
     request_timeout_seconds: float = Field(default=45, alias="REQUEST_TIMEOUT_SECONDS")
     llm_max_retries: int = Field(default=2, alias="LLM_MAX_RETRIES")
+    enable_web_search: bool = Field(default=True, alias="ENABLE_WEB_SEARCH")
+    tavily_api_key: SecretStr = Field(default=SecretStr(""), validation_alias=AliasChoices("TAVILYSEARCH_API_KEY", "TAVILY_API_KEY"))
+    tavily_search_timeout_seconds: float = Field(default=10, gt=0, alias="TAVILY_SEARCH_TIMEOUT_SECONDS")
+    tavily_fallback_timeout_seconds: float = Field(default=5, gt=0, alias="TAVILY_FALLBACK_TIMEOUT_SECONDS")
+    tavily_search_budget_seconds: float = Field(default=20, gt=0, alias="TAVILY_SEARCH_BUDGET_SECONDS")
+    tavily_max_retries: int = Field(default=1, ge=0, le=1, alias="TAVILY_MAX_RETRIES")
+    tavily_max_concurrency: int = Field(default=4, ge=1, alias="TAVILY_MAX_CONCURRENCY")
+    tavily_queue_timeout_seconds: float = Field(default=1, gt=0, alias="TAVILY_QUEUE_TIMEOUT_SECONDS")
+    tavily_circuit_failure_threshold: int = Field(default=5, ge=1, alias="TAVILY_CIRCUIT_FAILURE_THRESHOLD")
+    tavily_circuit_cooldown_seconds: float = Field(default=30, gt=0, alias="TAVILY_CIRCUIT_COOLDOWN_SECONDS")
+    quiz_generation_budget_seconds: float = Field(default=55, gt=0, alias="QUIZ_GENERATION_BUDGET_SECONDS")
     blocked_terms: str = Field(
         default="赌博教程,毒品交易,制作炸弹",
         alias="BLOCKED_TERMS",

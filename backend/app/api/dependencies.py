@@ -14,11 +14,17 @@ from app.db.models import AuthSession, User
 from app.llm.deepseek_generators import DeepSeekQuizGenerator, DeepSeekReportGenerator
 from app.services.quiz_service import QuizGenerator
 from app.services.report_service import ReportGenerator
+from app.services.web_search_service import WebSearchService
 
 
 @lru_cache
 def get_quiz_generator() -> QuizGenerator:
     return DeepSeekQuizGenerator(get_settings())
+
+
+@lru_cache
+def get_web_search_service() -> WebSearchService:
+    return WebSearchService(get_settings())
 
 
 @lru_cache

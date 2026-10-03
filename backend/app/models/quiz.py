@@ -2,6 +2,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.models.web_search import WebSearchMetadata
+
 
 class QuestionType(StrEnum):
     SINGLE = "single"
@@ -69,6 +71,7 @@ class QuizGenerateRequest(BaseModel):
     user_input: str = Field(min_length=2, max_length=2000)
     question_count: int = Field(default=5, ge=3, le=5)
     difficulty: str = Field(default="mixed", pattern=r"^(easy|mixed|hard)$")
+    enable_web_search: bool | None = None
 
     @field_validator("user_input", mode="before")
     @classmethod
@@ -85,6 +88,7 @@ class QuizDraft(BaseModel):
 class Quiz(QuizDraft):
     quiz_id: str
     user_input: str
+    web_search: WebSearchMetadata | None = None
 
 
 class AnswerRecord(BaseModel):
@@ -107,4 +111,3 @@ class ScoreSummary(BaseModel):
     mastered_points: list[str]
     weak_points: list[str]
     answer_records: list[AnswerRecord]
-

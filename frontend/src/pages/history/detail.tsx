@@ -4,6 +4,7 @@ import { Text, View } from '@tarojs/components'
 import { getAttempt } from '@/services/api'
 import '../learning/index.scss'
 import './index.scss'
+import WebSearchInfo from '@/components/WebSearchInfo'
 
 export default function Detail() {
   const id = useRouter().params.attemptId || ''
@@ -26,6 +27,7 @@ export default function Detail() {
       </View>
       {data.report && <View className='report-recap'><Text className='recap-title'>本次复盘</Text>{data.report.three_line_summary.map((line: string) => <Text className='recap-line' key={line}>· {line}</Text>)}{data.report.weak_points.length > 0 && <Text className='weak-points'>建议再看：{data.report.weak_points.join('、')}</Text>}</View>}
       <Text className='detail-section-title'>答题情况</Text>
+      <WebSearchInfo metadata={data.web_search} completed={data.status === 'completed'} />
       {data.questions.map((question: any, index: number) => (
         <View className='mistake-topic' key={question.question_id}>
           <View className='mistake-head'><Text>第 {index + 1} 题</Text><Text className={question.result?.is_correct ? 'right' : 'wrong'}>{question.result ? (question.result.is_correct ? '答对' : '答错') : '未作答'}</Text></View>

@@ -3,16 +3,26 @@ import { clearAuth, getAuth, saveAuth, updateUser } from '@/store/auth'
 import type { AnswerResult, ApiEnvelope, CompletionResult, HistoryItem, LearningOverview, LoginData, Quiz, Report, UserProfile } from '@/types/api'
 
 const API_BASE_URL = process.env.TARO_APP_API_BASE_URL || 'http://127.0.0.1:8000'
+const QUIZ_REQUEST_TIMEOUT_MS = 60_000
 export class ApiError extends Error { constructor(message: string, public code = -1) { super(message); this.name = 'ApiError' } }
 let refreshPromise: Promise<void> | null = null
 let loginPromise: Promise<UserProfile> | null = null
 
-async function raw<T>(path: string, method: 'GET' | 'POST' | 'PATCH' = 'GET', data?: unknown, authenticated = true, retry = true): Promise<T> {
+export interface RequestControl { cancelled: boolean; task?: { abort(): void }; cancel(): void }
+export function createRequestControl(): RequestControl {
+  return { cancelled: false, cancel() { this.cancelled = true; this.task?.abort() } }
+}
+
+async function raw<T>(path: string, method: 'GET' | 'POST' | 'PATCH' = 'GET', data?: unknown, authenticated = true, retry = true, control?: RequestControl): Promise<T> {
   const token = getAuth().accessToken
   try {
-    const response = await Taro.request<ApiEnvelope<T>>({ url: `${API_BASE_URL}${path}`, method, data, timeout: 60_000, header: { 'content-type': 'application/json', ...(authenticated && token ? { Authorization: `Bearer ${token}` } : {}) } })
+    if (control?.cancelled) throw new ApiError('用户已取消生成')
+    const task = Taro.request<ApiEnvelope<T>>({ url: `${API_BASE_URL}${path}`, method, data, timeout: path === '/api/v1/quizzes/generate' ? QUIZ_REQUEST_TIMEOUT_MS : 60_000, header: { 'content-type': 'application/json', ...(authenticated && token ? { Authorization: `Bearer ${token}` } : {}) } })
+    if (control) control.task = task
+    const response = await task
+    if (control?.cancelled) throw new ApiError('用户已取消生成')
     const envelope = response.data
-    if (response.statusCode === 401 && authenticated && retry && getAuth().refreshToken) { await refreshAuth(); return raw<T>(path, method, data, authenticated, false) }
+    if (response.statusCode === 401 && authenticated && retry && getAuth().refreshToken) { await refreshAuth(); return raw<T>(path, method, data, authenticated, false, control) }
     if (response.statusCode < 200 || response.statusCode >= 300 || envelope.code !== 0 || envelope.data == null) throw new ApiError(envelope.message || '请求失败，请稍后重试', envelope.code)
     return envelope.data
   } catch (error) { if (error instanceof ApiError) throw error; throw new ApiError('网络连接失败，请检查后重试') }
@@ -39,7 +49,7 @@ export function getMe(): Promise<UserProfile> { return raw('/api/v1/users/me') }
 export async function updateProfile(nickname: string): Promise<UserProfile> { const user = await raw<UserProfile>('/api/v1/users/me', 'PATCH', { nickname }); updateUser(user); return user }
 export async function uploadAvatar(filePath: string): Promise<UserProfile> { const response = await Taro.uploadFile({ url: `${API_BASE_URL}/api/v1/users/me/avatar`, filePath, name: 'file', header: { Authorization: `Bearer ${getAuth().accessToken}` } }); const envelope = JSON.parse(response.data) as ApiEnvelope<UserProfile>; if (response.statusCode < 200 || response.statusCode >= 300 || !envelope.data) throw new ApiError(envelope.message || '头像上传失败', envelope.code); updateUser(envelope.data); return envelope.data }
 export function assetUrl(path: string): string { return path.startsWith('/avatars/') ? `${API_BASE_URL}${path}` : path }
-export async function generateQuiz(userInput: string): Promise<Quiz> { await ensureLogin(); return raw('/api/v1/quizzes/generate', 'POST', { user_input: userInput, question_count: 5, difficulty: 'mixed' }) }
+export async function generateQuiz(userInput: string, enableWebSearch = true, control?: RequestControl): Promise<Quiz> { await ensureLogin(); return raw('/api/v1/quizzes/generate', 'POST', { user_input: userInput, question_count: 5, difficulty: 'mixed', enable_web_search: enableWebSearch }, true, true, control) }
 export function submitAnswer(attemptId: string, questionId: string, selectedAnswers: string[], durationMs: number, idempotencyKey: string): Promise<AnswerResult> { return raw(`/api/v1/attempts/${attemptId}/answers`, 'POST', { question_id: questionId, selected_answers: selectedAnswers, duration_ms: durationMs, idempotency_key: idempotencyKey }) }
 export function completeAttempt(attemptId: string): Promise<CompletionResult> { return raw(`/api/v1/attempts/${attemptId}/complete`, 'POST') }
 export function createAttempt(quizId: string, attemptType: 'normal'|'replay'='replay'): Promise<any> { return raw('/api/v1/attempts', 'POST', { quiz_id: quizId, attempt_type: attemptType }) }

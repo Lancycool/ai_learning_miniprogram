@@ -2,13 +2,14 @@ import asyncio
 from io import BytesIO
 from pathlib import Path
 import shutil
+import pytest
 
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-from app.api.dependencies import get_current_user, get_quiz_generator, get_report_generator
+from app.api.dependencies import get_current_user, get_quiz_generator, get_report_generator, get_web_search_service
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.db.base import Base
@@ -20,6 +21,9 @@ from app.services.auth_service import public_id
 from app.integrations.wechat_client import WechatClient
 from PIL import Image
 from tests.test_services import build_questions
+from tests.test_web_search import EnhancedGenerator, Provider, response as search_response, settings as search_settings
+from app.services.web_search_service import WebSearchService
+from app.db.models import Quiz as DbQuiz
 
 
 class FakeQuizGenerator:
@@ -32,7 +36,8 @@ class FakeReportGenerator:
         return ReportNarrative(three_line_summary=["先检索资料。", "再生成回答。", "资料质量很重要。"], advice=["明天再解释一次。"], share_quote="知识需要一步一步走懂。")
 
 
-def test_authenticated_learning_api_flow() -> None:
+@pytest.mark.parametrize("search_status", ["success", "fallback", "disabled"])
+def test_authenticated_learning_api_flow(search_status) -> None:
     settings = get_settings()
     engine = create_async_engine(settings.test_database_url, poolclass=NullPool)
     factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -55,22 +60,37 @@ def test_authenticated_learning_api_flow() -> None:
 
     app.dependency_overrides[get_db] = db_override
     app.dependency_overrides[get_current_user] = lambda: user
-    app.dependency_overrides[get_quiz_generator] = lambda: FakeQuizGenerator()
+    app.dependency_overrides[get_quiz_generator] = lambda: EnhancedGenerator()
+    provider = Provider(search_response("RAG 检索增强生成") if search_status == "success" else {"error": "Error 401"})
+    search = WebSearchService(search_settings(ENABLE_WEB_SEARCH=search_status != "disabled"), provider)
+    app.dependency_overrides[get_web_search_service] = lambda: search
     app.dependency_overrides[get_report_generator] = lambda: FakeReportGenerator()
     client = TestClient(app)
     generated = client.post("/api/v1/quizzes/generate", json={"user_input": "三分钟理解 RAG"})
     assert generated.status_code == 200
     quiz = generated.json()["data"]
+    assert quiz["web_search"]["status"] == search_status
+    assert quiz["web_search"]["sources"] == []
     assert "answer" not in quiz["questions"][0]
     attempt_id = quiz["attempt_id"]
     answers = [question.answer for question in build_questions()]
     for index, (question, selected) in enumerate(zip(quiz["questions"], answers)):
         response = client.post(f"/api/v1/attempts/{attempt_id}/answers", json={"question_id": question["question_id"], "selected_answers": selected, "duration_ms": 1000, "idempotency_key": f"answer-key-{index}"})
         assert response.json()["data"]["is_correct"] is True
+        if index == 0:
+            assert client.get(f"/api/v1/attempts/{attempt_id}").json()["data"]["web_search"]["sources"] == []
     completed = client.post(f"/api/v1/attempts/{attempt_id}/complete")
     assert completed.json()["data"]["earned_xp"] == 20
     assert client.post(f"/api/v1/attempts/{attempt_id}/complete").json()["data"]["xp_total"] == 20
     assert client.get(f"/api/v1/attempts/{attempt_id}").json()["data"]["status"] == "completed"
+    full = client.get(f"/api/v1/attempts/{attempt_id}").json()["data"]["web_search"]
+    assert bool(full["sources"]) == (search_status == "success")
+    async def check_saved():
+        async with factory() as session:
+            saved = await session.scalar(select(DbQuiz).where(DbQuiz.public_id == quiz["quiz_id"]))
+            assert saved.web_search_metadata_json["status"] == search_status
+            assert saved.prompt_version == ("quiz_prompt_web_v1" if search_status == "success" else "quiz_prompt_v1")
+    asyncio.run(check_saved())
     assert len(client.get("/api/v1/learning/history").json()["data"]) == 1
     overview = client.get("/api/v1/learning/overview").json()["data"]
     assert overview["week_completed"] == 1
@@ -86,6 +106,11 @@ def test_authenticated_learning_api_flow() -> None:
     assert client.post(f"/api/v1/attempts/{attempt_id}/report").json()["data"]["share_quote"]
     replay = client.post("/api/v1/attempts", json={"quiz_id": quiz["quiz_id"], "attempt_type": "replay"})
     assert replay.json()["data"]["attempt_type"] == "replay"
+    assert replay.json()["data"]["web_search"]["sources"] == []
+    assert replay.json()["data"]["web_search"]["status"] == search_status
+    app.dependency_overrides[get_current_user] = lambda: User(id=user.id+99999, public_id="other-user")
+    assert client.get(f"/api/v1/attempts/{attempt_id}").status_code == 404
+    assert len(provider.calls) == (0 if search_status == "disabled" else 1)
     app.dependency_overrides.clear()
     asyncio.run(engine.dispose())
 

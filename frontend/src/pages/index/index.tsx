@@ -1,17 +1,19 @@
-import { useRef, useState } from 'react'
-import Taro, { useDidShow } from '@tarojs/taro'
-import { Button, Image, Text, Textarea, View } from '@tarojs/components'
+import { useEffect, useRef, useState } from 'react'
+import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
+import { Button, Image, Switch, Text, Textarea, View } from '@tarojs/components'
 import pandaHappy from '@/assets/panda-happy.svg'
 import pandaLogo from '@/assets/panda-logo.svg'
 import pandaSad from '@/assets/panda-sad.svg'
 import pandaThinking from '@/assets/panda-thinking.svg'
-import { ApiError, ensureLogin, generateQuiz } from '@/services/api'
+import { ApiError, createRequestControl, ensureLogin, generateQuiz } from '@/services/api'
+import type { RequestControl } from '@/services/api'
 import { clearSession, startSession } from '@/store/session'
 import { getAuth } from '@/store/auth'
 import { setActiveTab } from '@/store/navigation'
 import { useNavigationLayout } from '@/utils/navigation'
 import type { UserProfile } from '@/types/api'
 import './index.scss'
+import '@/components/web-search.scss'
 
 type PageState = 'home' | 'loading' | 'error'
 
@@ -24,6 +26,10 @@ export default function IndexPage() {
   const [errorMessage, setErrorMessage] = useState('系统没有得到完整的题目。你的学习内容不会丢失。')
   const [user, setUser] = useState<UserProfile | null>(getAuth().user)
   const requestToken = useRef(0)
+  const [enableWebSearch, setEnableWebSearch] = useState(true)
+  const requestControl = useRef<RequestControl | null>(null)
+  useEffect(() => () => { requestToken.current += 1; requestControl.current?.cancel() }, [])
+  useDidHide(() => { if (requestControl.current) cancel() })
 
   useDidShow(() => {
     setActiveTab(0)
@@ -31,16 +37,19 @@ export default function IndexPage() {
   })
 
   async function submit(): Promise<void> {
+    if (requestControl.current && !requestControl.current.cancelled) return
     const normalized = topic.trim()
     if (!normalized) {
       Taro.showToast({ title: '请先告诉团团你想学什么', icon: 'none' })
       return
     }
     const token = ++requestToken.current
+    const control = createRequestControl()
+    requestControl.current = control
     clearSession()
     setPageState('loading')
     try {
-      const quiz = await generateQuiz(normalized)
+      const quiz = await generateQuiz(normalized, enableWebSearch, control)
       if (token !== requestToken.current) return
       startSession(quiz)
       await Taro.navigateTo({ url: '/pages/quiz/index' })
@@ -49,11 +58,13 @@ export default function IndexPage() {
       if (token !== requestToken.current) return
       setErrorMessage(error instanceof ApiError ? error.message : '生成失败，请稍后重试。')
       setPageState('error')
-    }
+    } finally { if (requestControl.current === control) requestControl.current = null }
   }
 
   function cancel(): void {
     requestToken.current += 1
+    requestControl.current?.cancel()
+    requestControl.current = null
     setPageState('home')
   }
 
@@ -67,11 +78,9 @@ export default function IndexPage() {
             <View className='bamboo-plant' />
           </View>
           <Text className='loading-title'>团团正在种下关卡</Text>
-          <Text className='loading-description'>系统正在整理“{topic.trim()}”，通常需要几秒钟。</Text>
+          <Text className='loading-description'>系统正在准备“{topic.trim()}”的题目，请稍等。</Text>
           <View className='loading-steps'>
-            <View className='loading-step done'><Text className='step-dot'>✓</Text><Text>找到主题里的核心概念</Text></View>
-            <View className='loading-step done'><Text className='step-dot'>✓</Text><Text>整理常见误区</Text></View>
-            <View className='loading-step active'><Text className='step-dot' /><Text>生成 5 道闯关题</Text></View>
+            <View className='loading-step active'><Text className='step-dot' /><Text>{enableWebSearch ? '系统会尝试联网补充资料，搜索失败时仍会出题。' : '系统会根据模型已有知识出题。'}</Text></View>
           </View>
           <Button className='quiet-action' onClick={cancel}>取消生成</Button>
         </View>
@@ -122,6 +131,8 @@ export default function IndexPage() {
           <Text>{topic.length} / 2000</Text>
         </View>
       </View>
+      <View className='web-search-option'><Text>联网补充资料</Text><Switch checked={enableWebSearch} color='#43886c' onChange={(event) => setEnableWebSearch(event.detail.value)} /></View>
+      <Text className='safe-note'>系统会向搜索服务发送精简后的学习主题。你可以关闭联网。</Text>
       <View className='examples'>
         <Text className='examples-label'>没有想法？你可以从这里开始</Text>
         <View className='chips'>
