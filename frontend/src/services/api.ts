@@ -1,25 +1,28 @@
 import Taro from '@tarojs/taro'
 import { clearAuth, getAuth, saveAuth, updateUser } from '@/store/auth'
-import type { AnswerResult, ApiEnvelope, CompletionResult, HistoryItem, LearningOverview, LoginData, Quiz, Report, UserProfile } from '@/types/api'
+import type { AnswerResult, ApiEnvelope, CompletionResult, HistoryItem, LearningOverview, LoginData, Quiz, QuizGenerationTask, Report, UserProfile } from '@/types/api'
 
 const API_BASE_URL = process.env.TARO_APP_API_BASE_URL || 'http://127.0.0.1:8000'
 const QUIZ_REQUEST_TIMEOUT_MS = 60_000
+const TASK_REQUEST_TIMEOUT_MS = 15_000
+const QUIZ_TASK_POLL_INTERVAL_MS = 3_000
 export class ApiError extends Error { constructor(message: string, public code = -1) { super(message); this.name = 'ApiError' } }
 let refreshPromise: Promise<void> | null = null
 let loginPromise: Promise<UserProfile> | null = null
 
-export interface RequestControl { cancelled: boolean; task?: { abort(): void }; cancel(): void }
+export interface RequestControl { cancelled: boolean; task?: { abort(): void }; cancelWait?: () => void; cancel(): void }
 export function createRequestControl(): RequestControl {
-  return { cancelled: false, cancel() { this.cancelled = true; this.task?.abort() } }
+  return { cancelled: false, cancel() { this.cancelled = true; this.task?.abort(); this.cancelWait?.() } }
 }
 
 async function raw<T>(path: string, method: 'GET' | 'POST' | 'PATCH' = 'GET', data?: unknown, authenticated = true, retry = true, control?: RequestControl): Promise<T> {
   const token = getAuth().accessToken
   try {
     if (control?.cancelled) throw new ApiError('用户已取消生成')
-    const task = Taro.request<ApiEnvelope<T>>({ url: `${API_BASE_URL}${path}`, method, data, timeout: path === '/api/v1/quizzes/generate' ? QUIZ_REQUEST_TIMEOUT_MS : 60_000, header: { 'content-type': 'application/json', ...(authenticated && token ? { Authorization: `Bearer ${token}` } : {}) } })
+    const task = Taro.request<ApiEnvelope<T>>({ url: `${API_BASE_URL}${path}`, method, data, timeout: path.startsWith('/api/v1/quizzes/generation-tasks') ? TASK_REQUEST_TIMEOUT_MS : QUIZ_REQUEST_TIMEOUT_MS, header: { 'content-type': 'application/json', ...(authenticated && token ? { Authorization: `Bearer ${token}` } : {}) } })
     if (control) control.task = task
-    const response = await task
+    let response: Awaited<typeof task>
+    try { response = await task } finally { if (control?.task === task) control.task = undefined }
     if (control?.cancelled) throw new ApiError('用户已取消生成')
     const envelope = response.data
     if (response.statusCode === 401 && authenticated && retry && getAuth().refreshToken) { await refreshAuth(); return raw<T>(path, method, data, authenticated, false, control) }
@@ -49,7 +52,60 @@ export function getMe(): Promise<UserProfile> { return raw('/api/v1/users/me') }
 export async function updateProfile(nickname: string): Promise<UserProfile> { const user = await raw<UserProfile>('/api/v1/users/me', 'PATCH', { nickname }); updateUser(user); return user }
 export async function uploadAvatar(filePath: string): Promise<UserProfile> { const response = await Taro.uploadFile({ url: `${API_BASE_URL}/api/v1/users/me/avatar`, filePath, name: 'file', header: { Authorization: `Bearer ${getAuth().accessToken}` } }); const envelope = JSON.parse(response.data) as ApiEnvelope<UserProfile>; if (response.statusCode < 200 || response.statusCode >= 300 || !envelope.data) throw new ApiError(envelope.message || '头像上传失败', envelope.code); updateUser(envelope.data); return envelope.data }
 export function assetUrl(path: string): string { return path.startsWith('/avatars/') ? `${API_BASE_URL}${path}` : path }
-export async function generateQuiz(userInput: string, enableWebSearch = true, control?: RequestControl): Promise<Quiz> { await ensureLogin(); return raw('/api/v1/quizzes/generate', 'POST', { user_input: userInput, question_count: 5, difficulty: 'mixed', enable_web_search: enableWebSearch }, true, true, control) }
+export interface PendingGeneration { requestId: string; taskId?: string; userInput: string; enableWebSearch: boolean }
+function pendingKey(): string { return `bamboo_generation_v1_${getAuth().user?.user_id || 'anonymous'}` }
+export function getPendingGeneration(): PendingGeneration | null {
+  const pending = Taro.getStorageSync<PendingGeneration>(pendingKey())
+  return pending && typeof pending.requestId === 'string' && typeof pending.userInput === 'string' ? pending : null
+}
+function pausePolling(milliseconds: number, control?: RequestControl): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (control?.cancelled) { reject(new ApiError('用户已暂停等待')); return }
+    const cleanup = () => { clearTimeout(timer); if (control) control.cancelWait = undefined }
+    const timer = setTimeout(() => { cleanup(); resolve() }, milliseconds)
+    if (control) control.cancelWait = () => { cleanup(); reject(new ApiError('用户已暂停等待')) }
+  })
+}
+export function getQuizGenerationTask(taskId: string, control?: RequestControl): Promise<QuizGenerationTask> {
+  return raw(`/api/v1/quizzes/generation-tasks/${encodeURIComponent(taskId)}`, 'GET', undefined, true, true, control)
+}
+export async function generateQuiz(userInput: string, enableWebSearch = true, control?: RequestControl, onStatus?: (task: QuizGenerationTask) => void): Promise<Quiz> {
+  await ensureLogin()
+  if (control?.cancelled) throw new ApiError('用户已暂停等待')
+  const key = pendingKey()
+  const pending = getPendingGeneration() || { requestId: `req_${Date.now()}_${Math.random().toString(36).slice(2)}`, userInput, enableWebSearch }
+  // Save the request identifier before POST. A lost response can be retried safely.
+  Taro.setStorageSync(key, pending)
+  let task: QuizGenerationTask
+  try {
+    task = pending.taskId
+      ? await getQuizGenerationTask(pending.taskId, control)
+      : await raw<QuizGenerationTask>('/api/v1/quizzes/generation-tasks', 'POST', { request_id: pending.requestId, user_input: pending.userInput, question_count: 5, difficulty: 'mixed', enable_web_search: pending.enableWebSearch }, true, true, control)
+  } catch (error) {
+    if (error instanceof ApiError && [4001, 4002, 4040, 4090].includes(error.code)) Taro.removeStorageSync(key)
+    throw error
+  }
+  pending.taskId = task.task_id
+  Taro.setStorageSync(key, pending)
+  let failures = 0
+  while (true) {
+    if (control?.cancelled) throw new ApiError('用户已暂停等待')
+    onStatus?.(task)
+    if (task.status === 'failed') { Taro.removeStorageSync(key); throw new ApiError(task.error?.message || '题目生成失败，请稍后重试') }
+    if (task.status === 'succeeded') {
+      if (!task.result) throw new ApiError('任务已完成，但系统没有取得题库')
+      Taro.removeStorageSync(key)
+      return task.result
+    }
+    await pausePolling(Math.min(10_000, Math.max(1000, task.poll_after_ms || QUIZ_TASK_POLL_INTERVAL_MS)), control)
+    try { task = await getQuizGenerationTask(task.task_id, control); failures = 0 }
+    catch (error) {
+      if (control?.cancelled) throw error
+      if (error instanceof ApiError && error.code === 4040) { Taro.removeStorageSync(key); throw error }
+      if (++failures >= 3 || (error instanceof ApiError && error.code === 4010)) throw new ApiError('系统暂时无法查询任务。任务仍会继续，你可以稍后重新查看。')
+    }
+  }
+}
 export function submitAnswer(attemptId: string, questionId: string, selectedAnswers: string[], durationMs: number, idempotencyKey: string): Promise<AnswerResult> { return raw(`/api/v1/attempts/${attemptId}/answers`, 'POST', { question_id: questionId, selected_answers: selectedAnswers, duration_ms: durationMs, idempotency_key: idempotencyKey }) }
 export function completeAttempt(attemptId: string): Promise<CompletionResult> { return raw(`/api/v1/attempts/${attemptId}/complete`, 'POST') }
 export function createAttempt(quizId: string, attemptType: 'normal'|'replay'='replay'): Promise<any> { return raw('/api/v1/attempts', 'POST', { quiz_id: quizId, attempt_type: attemptType }) }

@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     tavily_circuit_failure_threshold: int = Field(default=5, ge=1, alias="TAVILY_CIRCUIT_FAILURE_THRESHOLD")
     tavily_circuit_cooldown_seconds: float = Field(default=30, gt=0, alias="TAVILY_CIRCUIT_COOLDOWN_SECONDS")
     quiz_generation_budget_seconds: float = Field(default=55, gt=0, alias="QUIZ_GENERATION_BUDGET_SECONDS")
+    quiz_task_workers: int = Field(default=2, ge=1, le=16, alias="QUIZ_TASK_WORKERS")
+    quiz_task_poll_seconds: float = Field(default=1, gt=0, alias="QUIZ_TASK_POLL_SECONDS")
+    quiz_task_timeout_seconds: float = Field(default=90, gt=0, alias="QUIZ_TASK_TIMEOUT_SECONDS")
+    quiz_task_queue_timeout_seconds: float = Field(default=600, gt=0, alias="QUIZ_TASK_QUEUE_TIMEOUT_SECONDS")
     blocked_terms: str = Field(
         default="赌博教程,毒品交易,制作炸弹",
         alias="BLOCKED_TERMS",

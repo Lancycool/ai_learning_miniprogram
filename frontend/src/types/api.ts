@@ -28,6 +28,17 @@ export interface Quiz {
   web_search?: WebSearchMetadata | null
 }
 
+export interface QuizGenerationTask {
+  task_id: string
+  status: 'queued' | 'running' | 'succeeded' | 'failed'
+  poll_after_ms: number
+  created_at: string
+  started_at: string | null
+  completed_at: string | null
+  error: { code: string; message: string } | null
+  result: Quiz | null
+}
+
 export interface WebSearchMetadata {
   requested: boolean
   enabled: boolean

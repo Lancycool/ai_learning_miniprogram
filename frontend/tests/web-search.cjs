@@ -3,10 +3,11 @@ const fs = require('node:fs')
 const vm = require('node:vm')
 const ts = require('typescript')
 const calls = []
-let result = { statusCode: 200, data: { code: 0, data: { web_search: { status: 'fallback', context_used: false } } } }
+let result = { statusCode: 202, data: { code: 0, data: { task_id: 'task_test', status: 'succeeded', result: { web_search: { status: 'fallback', context_used: false } } } } }
 let aborts = 0
 let pending = false
-const taro = { request(options) {
+const storage = new Map()
+const taro = { getStorageSync: (key) => storage.get(key), setStorageSync: (key, value) => storage.set(key, value), removeStorageSync: (key) => storage.delete(key), request(options) {
   calls.push(options)
   let reject
   const promise = pending ? new Promise((resolve, fail) => { reject = fail }) : Promise.resolve(result)
@@ -23,7 +24,8 @@ vm.runInNewContext(compiled, { exports: exportsObject, process, require(name) {
 ;(async () => {
   const quiz = await exportsObject.generateQuiz('HarnessEngineering', false)
   assert.equal(calls[0].data.enable_web_search, false)
-  assert.equal(calls[0].timeout, 60000)
+  assert.equal(calls[0].timeout, 15000)
+  assert(calls[0].url.endsWith('/quizzes/generation-tasks'))
   assert.equal(quiz.web_search.status, 'fallback')
   assert.equal(calls.length, 1, 'a search fallback must not repeat the generation request')
   await exportsObject.getMe()

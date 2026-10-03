@@ -113,6 +113,29 @@ class LearningAttempt(Base):
     abandoned_at: Mapped[datetime | None] = mapped_column(DateTime(6))
 
 
+class QuizGenerationTask(TimestampMixin, Base):
+    __tablename__ = "quiz_generation_tasks"
+    __table_args__ = (
+        UniqueConstraint("user_id", "request_id", name="uq_quiz_task_request"),
+        Index("ix_quiz_tasks_queue", "status", "created_at", "id"),
+        Index("ix_quiz_tasks_user_status", "user_id", "status"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    public_id: Mapped[str] = mapped_column(String(40), unique=True, nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    request_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    request_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), default="queued", nullable=False)
+    claim_token: Mapped[str | None] = mapped_column(String(40))
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(6))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(6))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(6))
+    quiz_id: Mapped[int | None] = mapped_column(ForeignKey("quizzes.id", ondelete="SET NULL"))
+    attempt_id: Mapped[int | None] = mapped_column(ForeignKey("learning_attempts.id", ondelete="SET NULL"))
+    error_code: Mapped[str | None] = mapped_column(String(40))
+    error_message: Mapped[str | None] = mapped_column(String(200))
+
+
 class AttemptQuestion(Base):
     __tablename__ = "attempt_questions"
     __table_args__ = (UniqueConstraint("attempt_id", "sequence_no", name="uq_attempt_question_sequence"),)

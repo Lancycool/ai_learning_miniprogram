@@ -5,7 +5,7 @@ import pandaHappy from '@/assets/panda-happy.svg'
 import pandaLogo from '@/assets/panda-logo.svg'
 import pandaSad from '@/assets/panda-sad.svg'
 import pandaThinking from '@/assets/panda-thinking.svg'
-import { ApiError, createRequestControl, ensureLogin, generateQuiz } from '@/services/api'
+import { ApiError, createRequestControl, ensureLogin, generateQuiz, getPendingGeneration } from '@/services/api'
 import type { RequestControl } from '@/services/api'
 import { clearSession, startSession } from '@/store/session'
 import { getAuth } from '@/store/auth'
@@ -27,18 +27,34 @@ export default function IndexPage() {
   const [user, setUser] = useState<UserProfile | null>(getAuth().user)
   const requestToken = useRef(0)
   const [enableWebSearch, setEnableWebSearch] = useState(true)
+  const [taskStatus, setTaskStatus] = useState('系统正在提交任务。')
   const requestControl = useRef<RequestControl | null>(null)
-  useEffect(() => () => { requestToken.current += 1; requestControl.current?.cancel() }, [])
-  useDidHide(() => { if (requestControl.current) cancel() })
+  const visible = useRef(false)
+  useEffect(() => () => { visible.current = false; requestToken.current += 1; requestControl.current?.cancel() }, [])
+  useDidHide(() => { visible.current = false; if (requestControl.current) cancel() })
 
   useDidShow(() => {
+    visible.current = true
     setActiveTab(0)
-    ensureLogin().then(setUser).catch(() => undefined)
+    ensureLogin().then((profile) => {
+      if (!visible.current) return
+      setUser(profile)
+      const pending = getPendingGeneration()
+      if (pending && !requestControl.current) {
+        setTopic(pending.userInput)
+        setEnableWebSearch(pending.enableWebSearch)
+        void submit(pending.userInput, pending.enableWebSearch)
+      }
+    }).catch(() => undefined)
   })
 
-  async function submit(): Promise<void> {
+  async function submit(input = topic, webSearch = enableWebSearch): Promise<void> {
     if (requestControl.current && !requestControl.current.cancelled) return
-    const normalized = topic.trim()
+    const pending = getPendingGeneration()
+    if (pending) { input = pending.userInput; webSearch = pending.enableWebSearch }
+    setTopic(input)
+    setEnableWebSearch(webSearch)
+    const normalized = input.trim()
     if (!normalized) {
       Taro.showToast({ title: '请先告诉团团你想学什么', icon: 'none' })
       return
@@ -48,8 +64,11 @@ export default function IndexPage() {
     requestControl.current = control
     clearSession()
     setPageState('loading')
+    setTaskStatus('系统正在提交或恢复任务。')
     try {
-      const quiz = await generateQuiz(normalized, enableWebSearch, control)
+      const quiz = await generateQuiz(normalized, webSearch, control, (task) => {
+        if (token === requestToken.current) setTaskStatus(task.status === 'queued' ? '任务正在排队，系统每 5 秒查询一次。' : task.status === 'running' ? '系统正在生成题目，任务会在后台继续。' : '系统正在准备进入关卡。')
+      })
       if (token !== requestToken.current) return
       startSession(quiz)
       await Taro.navigateTo({ url: '/pages/quiz/index' })
@@ -80,9 +99,10 @@ export default function IndexPage() {
           <Text className='loading-title'>团团正在种下关卡</Text>
           <Text className='loading-description'>系统正在准备“{topic.trim()}”的题目，请稍等。</Text>
           <View className='loading-steps'>
-            <View className='loading-step active'><Text className='step-dot' /><Text>{enableWebSearch ? '系统会尝试联网补充资料，搜索失败时仍会出题。' : '系统会根据模型已有知识出题。'}</Text></View>
+            <View className='loading-step active'><Text className='step-dot' /><Text>{taskStatus}</Text></View>
           </View>
-          <Button className='quiet-action' onClick={cancel}>取消生成</Button>
+          <Button className='quiet-action' onClick={cancel}>返回，稍后查看</Button>
+          <Text className='safe-note'>你离开页面后，已提交的任务会继续。你回到首页时可以继续查看。</Text>
         </View>
       </View>
     )
@@ -97,7 +117,7 @@ export default function IndexPage() {
           <Text className='error-title'>这次没有种出关卡</Text>
           <Text className='error-copy'>{errorMessage}</Text>
           <View className='error-reason'><Text className='reason-title'>你可以这样处理：</Text><Text>检查网络后重试，或把主题写得更具体一些。</Text></View>
-          <Button className='primary-button' onClick={submit}>重新生成</Button>
+          <Button className='primary-button' onClick={() => void submit()}>{getPendingGeneration() ? '继续查看任务' : '重新生成'}</Button>
           <Button className='quiet-action' onClick={() => setPageState('home')}>返回修改内容</Button>
         </View>
       </View>
@@ -139,7 +159,7 @@ export default function IndexPage() {
           {examples.map((example) => <Text className='chip' key={example} onClick={() => setTopic(example)}>{example}</Text>)}
         </View>
       </View>
-      <Button className='primary-button home-cta' onClick={submit}>让团团生成关卡 <Text>➜</Text></Button>
+      <Button className='primary-button home-cta' onClick={() => void submit()}>{getPendingGeneration() ? '继续查看生成任务' : '让团团生成关卡'} <Text>➜</Text></Button>
       <Text className='safe-note'>AI 内容可能有误，重要知识请再核对。</Text>
     </View>
   )

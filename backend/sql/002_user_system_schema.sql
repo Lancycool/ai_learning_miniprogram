@@ -287,6 +287,36 @@ CREATE TABLE `xp_transactions` (
   CONSTRAINT `xp_transactions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+-- Additive migration: existing quizzes and learning records are preserved.
+CREATE TABLE IF NOT EXISTS `quiz_generation_tasks` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `public_id` varchar(40) NOT NULL,
+  `user_id` bigint NOT NULL,
+  `request_id` varchar(64) NOT NULL,
+  `request_json` json NOT NULL,
+  `status` varchar(16) NOT NULL,
+  `claim_token` varchar(40) DEFAULT NULL,
+  `lease_expires_at` datetime(6) DEFAULT NULL,
+  `started_at` datetime(6) DEFAULT NULL,
+  `completed_at` datetime(6) DEFAULT NULL,
+  `quiz_id` bigint DEFAULT NULL,
+  `attempt_id` bigint DEFAULT NULL,
+  `error_code` varchar(40) DEFAULT NULL,
+  `error_message` varchar(200) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL,
+  `updated_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `public_id` (`public_id`),
+  UNIQUE KEY `uq_quiz_task_request` (`user_id`,`request_id`),
+  KEY `ix_quiz_tasks_queue` (`status`,`created_at`,`id`),
+  KEY `ix_quiz_tasks_user_status` (`user_id`,`status`),
+  KEY `quiz_id` (`quiz_id`),
+  KEY `attempt_id` (`attempt_id`),
+  CONSTRAINT `fk_quiz_task_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_quiz_task_quiz` FOREIGN KEY (`quiz_id`) REFERENCES `quizzes` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_quiz_task_attempt` FOREIGN KEY (`attempt_id`) REFERENCES `learning_attempts` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

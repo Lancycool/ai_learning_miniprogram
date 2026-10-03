@@ -24,7 +24,7 @@ class LearningService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def create_attempt(self, user: User, quiz_public_id: str, attempt_type: str = "normal") -> dict:
+    async def create_attempt(self, user: User, quiz_public_id: str, attempt_type: str = "normal", *, commit: bool = True) -> dict:
         quiz = await self.db.scalar(select(Quiz).where(Quiz.public_id == quiz_public_id, Quiz.user_id == user.id, Quiz.generation_status == "ready"))
         if not quiz:
             raise ResourceNotFoundError()
@@ -33,7 +33,10 @@ class LearningService:
         self.db.add(attempt)
         await self.db.flush()
         self.db.add_all([AttemptQuestion(attempt_id=attempt.id, question_id=q.id, sequence_no=i) for i, q in enumerate(questions, 1)])
-        await self.db.commit()
+        if commit:
+            await self.db.commit()
+        else:
+            await self.db.flush()
         return await self.get_attempt(user, attempt.public_id)
 
     async def get_attempt(self, user: User, attempt_public_id: str) -> dict:
