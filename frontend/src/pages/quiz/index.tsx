@@ -3,10 +3,10 @@ import Taro from '@tarojs/taro'
 import { Button, Image, Text, View } from '@tarojs/components'
 import pandaHappy from '@/assets/panda-happy.svg'
 import pandaSad from '@/assets/panda-sad.svg'
-import { generateReport } from '@/services/api'
+import { completeAttempt, generateReport, submitAnswer } from '@/services/api'
 import { clearSession, getSession, saveAnswers, saveReport } from '@/store/session'
-import type { AnswerRecord } from '@/types/api'
-import { isAnswerCorrect, questionTypeLabel } from '@/utils/quiz'
+import type { AnswerRecord, AnswerResult } from '@/types/api'
+import { questionTypeLabel } from '@/utils/quiz'
 import './index.scss'
 
 type QuizView = 'question' | 'feedback' | 'complete'
@@ -21,6 +21,8 @@ export default function QuizPage() {
   const [hearts, setHearts] = useState(3)
   const [earnedXp, setEarnedXp] = useState(0)
   const [reportLoading, setReportLoading] = useState(false)
+  const [lastResult, setLastResult] = useState<AnswerResult | null>(null)
+  const [submitting, setSubmitting] = useState(false)
   const questionStartedAt = useRef(Date.now())
 
   useEffect(() => {
@@ -58,11 +60,14 @@ export default function QuizPage() {
     setSelected([key])
   }
 
-  function checkAnswer(): void {
-    if (!selected.length) return
-    const correct = isAnswerCorrect(currentQuestion, selected)
+  async function checkAnswer(): Promise<void> {
+    if (!selected.length || submitting) return
+    setSubmitting(true)
+    try {
+    const result = await submitAnswer(initial.attemptId, currentQuestion.question_id, selected, Math.max(0, Date.now() - questionStartedAt.current), `${Date.now()}-${questionIndex}`)
+    const correct = result.is_correct
     const record: AnswerRecord = {
-      question_id: currentQuestion.id,
+      question_id: currentQuestion.question_id,
       selected_answers: selected,
       is_correct: correct,
       duration_ms: Math.max(0, Date.now() - questionStartedAt.current),
@@ -70,14 +75,16 @@ export default function QuizPage() {
     const nextRecords = [...records, record]
     setRecords(nextRecords)
     saveAnswers(nextRecords)
-    if (correct) setEarnedXp((value) => value + 20)
+    setLastResult(result)
+    if (correct) setEarnedXp((value) => value + result.earned_xp_delta)
     else setHearts((value) => Math.max(0, value - 1))
     setView('feedback')
+    } catch (error) { Taro.showToast({ title: error instanceof Error ? error.message : '提交失败，请重试', icon: 'none' }) } finally { setSubmitting(false) }
   }
 
-  function continueQuiz(): void {
+  async function continueQuiz(): Promise<void> {
     if (questionIndex === currentQuiz.questions.length - 1) {
-      setView('complete')
+      try { const done = await completeAttempt(initial.attemptId); setEarnedXp(done.earned_xp); setView('complete') } catch (error) { Taro.showToast({ title: error instanceof Error ? error.message : '通关失败，请重试', icon: 'none' }) }
       return
     }
     setQuestionIndex((value) => value + 1)
@@ -90,7 +97,7 @@ export default function QuizPage() {
     if (reportLoading) return
     setReportLoading(true)
     try {
-      const report = await generateReport(currentQuiz, records)
+      const report = await generateReport(initial.attemptId)
       saveReport(report)
       await Taro.navigateTo({ url: '/pages/report/index' })
     } catch (error) {
@@ -104,20 +111,20 @@ export default function QuizPage() {
   if (view === 'feedback' && lastRecord) {
     const correct = lastRecord.is_correct
     const selectedText = question.options.filter((option) => selected.includes(option.key)).map((option) => `${option.key} ${option.text}`).join('、')
-    const answerText = question.options.filter((option) => question.answer.includes(option.key)).map((option) => `${option.key} ${option.text}`).join('、')
+    const answerText = question.options.filter((option) => lastResult?.correct_answers.includes(option.key)).map((option) => `${option.key} ${option.text}`).join('、')
     return (
       <View className='page-shell feedback-page'>
         <View className='appbar'><Text className='icon-button' onClick={leaveQuiz}>×</Text><Text className='appbar-title'>第 {questionIndex + 1} 题讲解</Text><View className='mini-xp'>☀ {initial.baseXp + earnedXp}</View></View>
         <View className='feedback-stage'><Image className='feedback-panda panda-image' src={correct ? pandaHappy : pandaSad} mode='aspectFit' /></View>
         <Text className={`feedback-heading ${correct ? '' : 'wrong-title'}`}>{correct ? '答对了，竹子长高啦！' : '这一步容易混淆'}</Text>
         {correct ? (
-          <View className='reward-line'><Text className='reward-pill'>＋20 XP</Text><Text className='reward-pill'>答对 {correctCount} 题</Text></View>
+          <View className='reward-line'><Text className='reward-pill'>＋{lastResult?.earned_xp_delta || 0} XP</Text><Text className='reward-pill'>答对 {correctCount} 题</Text></View>
         ) : (
           <View className='answer-correction'><Text>你的答案：{selectedText}</Text><Text className='right-answer'>正确答案：{answerText}</Text></View>
         )}
         <View className={`explanation ${correct ? '' : 'wrong-note'}`}>
           <Text className='explanation-title'>{correct ? '为什么这样选？' : '团团帮你理一遍'}</Text>
-          <Text className='explanation-copy'>{question.explanation}</Text>
+          <Text className='explanation-copy'>{lastResult?.explanation}</Text>
           <Text className='knowledge-tag'>{correct ? `知识点：${question.knowledge_point}` : '已加入本轮重点复习'}</Text>
         </View>
         <View className='feedback-action'><Button className='primary-button' onClick={continueQuiz}>{questionIndex === quiz.questions.length - 1 ? '查看通关结果' : correct ? '继续下一题' : '我明白了，继续'}</Button></View>
@@ -133,7 +140,7 @@ export default function QuizPage() {
         <View className='complete-content'>
           <View className='flag-scene'><Image className='complete-panda panda-image' src={pandaHappy} mode='aspectFit' /><View className='flag-pole'><Text className='flag'>通关！</Text></View></View>
           <Text className='complete-title'>你闯过了 {quiz.title.replace('闯关', '').trim()}</Text>
-          <Text className='complete-copy'>五节竹子已经全部点亮。</Text>
+          <Text className='complete-copy'>{quiz.questions.length} 节竹子已经全部点亮。</Text>
           <View className='reward-board'>
             <View><Text className='reward-number'>{correctCount} / {quiz.questions.length}</Text><Text className='reward-label'>答对题数</Text></View>
             <View><Text className='reward-number'>{accuracy}%</Text><Text className='reward-label'>正确率</Text></View>
@@ -153,7 +160,7 @@ export default function QuizPage() {
       <View className='appbar'><Text className='icon-button' onClick={leaveQuiz}>×</Text><Text className='appbar-title quiz-app-title'>{quiz.title}</Text><View className='mini-xp'>☀ {initial.baseXp + earnedXp}</View></View>
       <View className='quiz-top'>
         <View className='bamboo-progress'>
-          {quiz.questions.map((item, index) => <View key={item.id} className={`progress-piece ${index < questionIndex ? 'done' : index === questionIndex ? 'current' : ''}`} />)}
+          {quiz.questions.map((item, index) => <View key={item.question_id} className={`progress-piece ${index < questionIndex ? 'done' : index === questionIndex ? 'current' : ''}`} />)}
         </View>
         <Text className='heart'>♥ {hearts}</Text>
       </View>
@@ -167,7 +174,7 @@ export default function QuizPage() {
           </View>
         ))}
       </View>
-      <View className='quiz-submit'><Button className='primary-button' disabled={!selected.length} onClick={checkAnswer}>检查答案</Button></View>
+      <View className='quiz-submit'><Button className='primary-button' loading={submitting} disabled={!selected.length || submitting} onClick={checkAnswer}>检查答案</Button></View>
     </View>
   )
 }

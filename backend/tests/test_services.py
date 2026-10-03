@@ -97,7 +97,7 @@ async def test_report_service_uses_server_side_score() -> None:
     report = await ReportService(FakeReportGenerator(), ScoringService()).generate(request)
     assert report.accuracy == 80
     assert report.correct_count == 4
-    assert report.earned_xp == 80
+    assert report.earned_xp == 18
     assert len(report.three_line_summary) == 3
 
 

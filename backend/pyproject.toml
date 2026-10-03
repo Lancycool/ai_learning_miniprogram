@@ -5,6 +5,15 @@ description = "AI 闯关学习小程序 MVP 后端"
 requires-python = ">=3.11,<3.14"
 dependencies = [
   "fastapi==0.141.1",
+  "alembic>=1.16,<2",
+  "asyncmy>=0.2.10,<1",
+  # MySQL 8 full password authentication after the server cache is cleared.
+  "cryptography>=44",
+  "PyJWT>=2.10,<3",
+  "SQLAlchemy[asyncio]>=2.0.40,<3",
+  "tzdata>=2025.2",
+  "python-multipart>=0.0.20,<1",
+  "pillow>=11.2,<13",
   "langchain==1.4.0",
   "langchain-deepseek==1.1.0",
   "pydantic==2.13.5",

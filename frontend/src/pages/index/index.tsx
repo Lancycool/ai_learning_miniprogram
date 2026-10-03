@@ -1,12 +1,14 @@
 import { useRef, useState } from 'react'
-import Taro from '@tarojs/taro'
+import Taro, { useDidShow } from '@tarojs/taro'
 import { Button, Image, Text, Textarea, View } from '@tarojs/components'
 import pandaHappy from '@/assets/panda-happy.svg'
 import pandaLogo from '@/assets/panda-logo.svg'
 import pandaSad from '@/assets/panda-sad.svg'
 import pandaThinking from '@/assets/panda-thinking.svg'
-import { ApiError, generateQuiz } from '@/services/api'
+import { ApiError, ensureLogin, generateQuiz } from '@/services/api'
 import { clearSession, startSession } from '@/store/session'
+import { getAuth } from '@/store/auth'
+import type { UserProfile } from '@/types/api'
 import './index.scss'
 
 type PageState = 'home' | 'loading' | 'error'
@@ -17,7 +19,12 @@ export default function IndexPage() {
   const [pageState, setPageState] = useState<PageState>('home')
   const [topic, setTopic] = useState('')
   const [errorMessage, setErrorMessage] = useState('系统没有得到完整的题目。你的学习内容不会丢失。')
+  const [user, setUser] = useState<UserProfile | null>(getAuth().user)
   const requestToken = useRef(0)
+
+  useDidShow(() => {
+    ensureLogin().then(setUser).catch(() => undefined)
+  })
 
   async function submit(): Promise<void> {
     const normalized = topic.trim()
@@ -88,7 +95,10 @@ export default function IndexPage() {
     <View className='page-shell home-page'>
       <View className='appbar home-appbar'>
         <View className='brand'><View className='brand-mark'><Image src={pandaLogo} mode='aspectFit' /></View><Text>竹知岛</Text></View>
-        <View className='mini-xp'><Text>☀</Text><Text>120 XP</Text></View>
+        <View className='home-account' onClick={() => Taro.switchTab({ url: '/pages/learning/index' })}>
+          <Text className='home-user'>{user?.nickname || '竹岛学习者'}</Text>
+          <View className='mini-xp'><Text>☀</Text><Text>{user?.xp_total || 0} XP</Text></View>
+        </View>
       </View>
       <View className='home-intro'>
         <View className='intro-copy'><Text className='home-title'>今天想闯过{`\n`}什么知识？</Text><Text className='home-description'>你给团团一个主题，团团把它变成五道小关卡。</Text></View>
@@ -119,4 +129,3 @@ export default function IndexPage() {
     </View>
   )
 }
-

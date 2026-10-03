@@ -37,6 +37,15 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 服务启动后，接口文档位于 `http://127.0.0.1:8000/docs`。健康检查位于 `http://127.0.0.1:8000/api/v1/health`。
 
+MySQL 8 重启后会重新验证数据库密码。后端依赖中的 `cryptography` 支持这一步。
+开发者更新依赖后需要重启后端进程，因为旧进程不会自动加载新安装的依赖。
+开发者可以在 `backend` 目录运行以下命令，检查数据库连接、登录表和微信配置是否齐全。
+脚本只读取数据库，不输出密码、Token 和用户身份信息。
+
+```powershell
+uv run python -m scripts.check_auth
+```
+
 后端提供两个核心接口。
 
 - `POST /api/v1/quiz/generate`：生成三道单选题、一道多选题和一道判断题。

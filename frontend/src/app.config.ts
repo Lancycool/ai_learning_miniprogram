@@ -4,6 +4,15 @@ export default defineAppConfig({
     'pages/quiz/index',
     'pages/report/index',
     'pages/poster/index',
+    'pages/learning/index',
+    'pages/history/index',
+    'pages/history/detail',
+    'pages/garden/index',
+    'pages/mistakes/index',
+    'pages/review/index',
+    'pages/monthly-report/index',
+    'pages/profile/index',
+    'pages/settings/index',
   ],
   window: {
     navigationStyle: 'custom',
@@ -11,5 +20,21 @@ export default defineAppConfig({
     navigationBarBackgroundColor: '#fffdf5',
     navigationBarTitleText: '竹知岛',
     navigationBarTextStyle: 'black',
+  },
+  tabBar: {
+    color: '#89928c',
+    selectedColor: '#1f6044',
+    backgroundColor: '#fffdf5',
+    borderStyle: 'white',
+    list: [
+      {
+        pagePath: 'pages/index/index',
+        text: '闯关',
+      },
+      {
+        pagePath: 'pages/learning/index',
+        text: '我的',
+      },
+    ],
   },
 })

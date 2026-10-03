@@ -33,9 +33,8 @@ class ScoringService:
             correct_count=correct_count,
             total_count=total_count,
             accuracy=accuracy,
-            earned_xp=correct_count * 20,
+            earned_xp=10 + correct_count * 2,
             mastered_points=list(dict.fromkeys(mastered)),
             weak_points=list(dict.fromkeys(weak)),
             answer_records=evaluated,
         )
-

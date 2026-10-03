@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import Taro, { useShareAppMessage } from '@tarojs/taro'
 import { Button, Text, View } from '@tarojs/components'
 import { getSession, startSession } from '@/store/session'
+import { createAttempt } from '@/services/api'
 import './index.scss'
 
 export default function ReportPage() {
@@ -19,8 +20,9 @@ export default function ReportPage() {
 
   if (!quiz || !report) return <View className='page-shell' />
 
-  function replay(): void {
-    startSession(quiz!)
+  async function replay(): Promise<void> {
+    const attempt = await createAttempt(quiz!.quiz_id, 'replay')
+    startSession({ ...quiz!, attempt_id: attempt.attempt_id, questions: attempt.questions })
     Taro.redirectTo({ url: '/pages/quiz/index' })
   }
 
@@ -55,4 +57,3 @@ export default function ReportPage() {
     </View>
   )
 }
-

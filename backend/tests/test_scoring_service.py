@@ -33,7 +33,7 @@ def test_scoring_ignores_multiple_answer_order_and_frontend_flag() -> None:
     assert result.correct_count == 1
     assert result.total_count == 2
     assert result.accuracy == 50
-    assert result.earned_xp == 20
+    assert result.earned_xp == 12
     assert result.mastered_points == ["知识点 q2"]
     assert result.weak_points == ["知识点 q1"]
     assert [record.is_correct for record in result.answer_records] == [False, True]
@@ -57,4 +57,3 @@ def test_scoring_rejects_unknown_selected_option() -> None:
     record = AnswerRecord(question_id="q1", selected_answers=["Z"], duration_ms=100)
     with pytest.raises(InvalidSubmissionError):
         ScoringService().score([question], [record])
-

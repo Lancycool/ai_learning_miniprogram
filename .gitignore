@@ -9,6 +9,7 @@
 node_modules/
 .pnpm-store/
 dist/
+frontend/project.private.config.json
 .temp/
 .taro/
 .swc/
@@ -41,3 +42,4 @@ Desktop.ini
 *.log
 *.tmp
 *.bak
+backend/data/

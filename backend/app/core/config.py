@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    api_key: str = Field(alias="API_KEY")
+    api_key: str = Field(default="", alias="API_KEY")
     base_url: str = Field(default="https://api.deepseek.com", alias="BASE_URL")
     model: str = Field(default="deepseek-flash", alias="MODEL")
     request_timeout_seconds: float = Field(default=45, alias="REQUEST_TIMEOUT_SECONDS")
@@ -16,6 +16,24 @@ class Settings(BaseSettings):
         alias="BLOCKED_TERMS",
     )
     cors_origins: str = Field(default="*", alias="CORS_ORIGINS")
+    database_url: str = Field(
+        default="mysql+asyncmy://root:replace-with-local-password@localhost:3306/bamboo_quiz?charset=utf8mb4",
+        alias="DATABASE_URL",
+    )
+    test_database_url: str = Field(
+        default="mysql+asyncmy://root:replace-with-local-password@localhost:3306/bamboo_quiz_test?charset=utf8mb4",
+        alias="TEST_DATABASE_URL",
+    )
+    wechat_app_id: str = Field(default="", alias="WECHAT_APP_ID")
+    wechat_app_secret: str = Field(default="", alias="WECHAT_APP_SECRET")
+    wechat_api_base_url: str = Field(default="https://api.weixin.qq.com", alias="WECHAT_API_BASE_URL")
+    jwt_secret_key: str = Field(default="development-only-change-me", alias="JWT_SECRET_KEY")
+    jwt_issuer: str = Field(default="bamboo-quiz-api", alias="JWT_ISSUER")
+    jwt_audience: str = Field(default="bamboo-quiz-miniapp", alias="JWT_AUDIENCE")
+    access_token_expire_minutes: int = Field(default=15, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
+    refresh_token_expire_days: int = Field(default=30, alias="REFRESH_TOKEN_EXPIRE_DAYS")
+    avatar_storage_backend: str = Field(default="local", alias="AVATAR_STORAGE_BACKEND")
+    avatar_local_directory: str = Field(default="./data/avatars", alias="AVATAR_LOCAL_DIRECTORY")
 
     model_config = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[2] / ".env",
@@ -36,4 +54,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()  # type: ignore[call-arg]
-

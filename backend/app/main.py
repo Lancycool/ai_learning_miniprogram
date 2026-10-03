@@ -2,6 +2,8 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 
 from app.api.v1.router import router as v1_router
 from app.core.config import get_settings
@@ -19,10 +21,12 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
     allow_credentials=settings.cors_origin_list != ["*"],
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
     allow_headers=["*"],
 )
 app.include_router(v1_router)
+avatar_dir = Path(__file__).resolve().parents[1] / "data" / "avatars"
+app.mount("/avatars", StaticFiles(directory=avatar_dir, check_dir=False), name="avatars")
 
 
 @app.exception_handler(AppError)
@@ -39,4 +43,3 @@ async def validation_error_handler(_: Request, __: RequestValidationError) -> JS
         status_code=422,
         content={"code": 4001, "message": "请求参数不正确", "data": None},
     )
-

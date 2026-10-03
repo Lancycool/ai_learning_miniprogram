@@ -7,6 +7,7 @@ export interface LearningSession {
   quiz: Quiz | null
   answerRecords: AnswerRecord[]
   report: Report | null
+  attemptId: string
   baseXp: number
 }
 
@@ -14,6 +15,7 @@ const emptySession: LearningSession = {
   quiz: null,
   answerRecords: [],
   report: null,
+  attemptId: '',
   baseXp: 120,
 }
 
@@ -37,7 +39,7 @@ export function getSession(): LearningSession {
 }
 
 export function startSession(quiz: Quiz): void {
-  session = { ...emptySession, quiz }
+  session = { ...emptySession, quiz, attemptId: quiz.attempt_id }
   saveSession()
 }
 
@@ -55,4 +57,3 @@ export function clearSession(): void {
   session = { ...emptySession }
   Taro.removeStorageSync(STORAGE_KEY)
 }
-
