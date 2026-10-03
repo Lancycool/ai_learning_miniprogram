@@ -8,6 +8,7 @@ import pandaThinking from '@/assets/panda-thinking.svg'
 import { ApiError, ensureLogin, generateQuiz } from '@/services/api'
 import { clearSession, startSession } from '@/store/session'
 import { getAuth } from '@/store/auth'
+import { setActiveTab } from '@/store/navigation'
 import type { UserProfile } from '@/types/api'
 import './index.scss'
 
@@ -23,6 +24,7 @@ export default function IndexPage() {
   const requestToken = useRef(0)
 
   useDidShow(() => {
+    setActiveTab(0)
     ensureLogin().then(setUser).catch(() => undefined)
   })
 
@@ -55,7 +57,7 @@ export default function IndexPage() {
 
   if (pageState === 'loading') {
     return (
-      <View className='page-shell loading-page'>
+      <View className='page-shell tab-page loading-page'>
         <View className='appbar'><Text className='back' onClick={cancel}>‹</Text><Text className='appbar-title'>准备关卡</Text><View className='bar-space' /></View>
         <View className='loading-center'>
           <View className='plant-scene'>
@@ -77,7 +79,7 @@ export default function IndexPage() {
 
   if (pageState === 'error') {
     return (
-      <View className='page-shell error-page'>
+      <View className='page-shell tab-page error-page'>
         <View className='appbar'><Text className='back' onClick={() => setPageState('home')}>‹</Text><Text className='appbar-title'>准备关卡</Text><View className='bar-space' /></View>
         <View className='error-content'>
           <Image className='panda-image error-panda' src={pandaSad} mode='aspectFit' />
@@ -92,7 +94,7 @@ export default function IndexPage() {
   }
 
   return (
-    <View className='page-shell home-page'>
+    <View className='page-shell tab-page home-page'>
       <View className='appbar home-appbar'>
         <View className='brand'><View className='brand-mark'><Image src={pandaLogo} mode='aspectFit' /></View><Text>竹知岛</Text></View>
         <View className='home-account' onClick={() => Taro.switchTab({ url: '/pages/learning/index' })}>

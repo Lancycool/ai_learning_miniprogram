@@ -22,6 +22,7 @@ export default defineAppConfig({
     navigationBarTextStyle: 'black',
   },
   tabBar: {
+    custom: process.env.TARO_ENV === 'weapp',
     color: '#89928c',
     selectedColor: '#1f6044',
     backgroundColor: '#fffdf5',
@@ -37,4 +38,5 @@ export default defineAppConfig({
       },
     ],
   },
+  usingComponents: {},
 })

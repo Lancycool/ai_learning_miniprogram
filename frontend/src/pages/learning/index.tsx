@@ -3,6 +3,7 @@ import Taro, { useDidShow } from '@tarojs/taro'
 import { Image, Text, View } from '@tarojs/components'
 import pandaLogo from '@/assets/panda-logo.svg'
 import { assetUrl, ensureLogin, getOverview } from '@/services/api'
+import { setActiveTab } from '@/store/navigation'
 import type { LearningOverview } from '@/types/api'
 import './index.scss'
 
@@ -27,15 +28,18 @@ export default function LearningPage() {
     }
   }
 
-  useDidShow(() => { load() })
+  useDidShow(() => {
+    setActiveTab(1)
+    load()
+  })
 
   if (error) {
-    return <View className='center-state'><Text>{error}</Text><Text className='state-action' onClick={load}>重新加载</Text></View>
+    return <View className='center-state tab-page'><Text>{error}</Text><Text className='state-action' onClick={load}>重新加载</Text></View>
   }
-  if (!data) return <View className='center-state'><Text>团团正在整理学习记录…</Text></View>
+  if (!data) return <View className='center-state tab-page'><Text>团团正在整理学习记录…</Text></View>
 
   return (
-    <View className='learning-page'>
+    <View className='learning-page tab-page'>
       <View className='learning-appbar'>
         <Text className='page-title'>我的</Text>
         <Text className='settings' onClick={() => Taro.navigateTo({ url: '/pages/settings/index' })}>⚙</Text>
