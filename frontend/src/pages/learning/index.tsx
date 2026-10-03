@@ -4,6 +4,7 @@ import { Image, Text, View } from '@tarojs/components'
 import pandaLogo from '@/assets/panda-logo.svg'
 import { assetUrl, ensureLogin, getOverview } from '@/services/api'
 import { setActiveTab } from '@/store/navigation'
+import { useNavigationLayout } from '@/utils/navigation'
 import type { LearningOverview } from '@/types/api'
 import './index.scss'
 
@@ -15,6 +16,7 @@ function formatDate(value: string | null): string {
 }
 
 export default function LearningPage() {
+  const navigation = useNavigationLayout()
   const [data, setData] = useState<LearningOverview | null>(null)
   const [error, setError] = useState('')
 
@@ -39,7 +41,7 @@ export default function LearningPage() {
   if (!data) return <View className='center-state tab-page'><Text>团团正在整理学习记录…</Text></View>
 
   return (
-    <View className='learning-page tab-page'>
+    <View className='learning-page tab-page' style={{ paddingTop: `${navigation.contentTop}px` }}>
       <View className='learning-appbar'>
         <Text className='page-title'>我的</Text>
         <Text className='settings' onClick={() => Taro.navigateTo({ url: '/pages/settings/index' })}>⚙</Text>

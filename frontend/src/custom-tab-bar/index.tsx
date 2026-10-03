@@ -6,7 +6,7 @@ import type { TabIndex } from '@/store/navigation'
 import './index.scss'
 
 const tabs = [
-  { index: 0, label: '闯关', path: '/pages/index/index', icon: 'flag' },
+  { index: 0, label: '闯关', path: '/pages/index/index', icon: 'home' },
   { index: 1, label: '我的', path: '/pages/learning/index', icon: 'user' },
 ] as const
 

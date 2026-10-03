@@ -2,12 +2,15 @@
   background: radial-gradient(circle at 110% 10%, rgba(169, 211, 110, .35), transparent 38%), #fffdf5;
 }
 
-.home-appbar { margin-bottom: 10px; }
-.home-account { display: flex; align-items: center; gap: 8px; }
-.home-user { max-width: 88px; overflow: hidden; color: #526159; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 700; }
+.home-appbar { box-sizing: border-box; margin-bottom: 0; justify-content: flex-start; }
+.home-account { display: flex; min-height: 44px; margin-top: 12px; align-items: center; justify-content: space-between; gap: 16px; }
+.home-greeting { display: flex; min-width: 0; flex: 1; align-items: center; font-size: 13px; }
+.home-greeting-label { flex: 0 0 auto; color: #68736b; }
+.home-user { min-width: 0; overflow: hidden; color: #1f6044; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; }
+.home-account .mini-xp { flex: 0 0 auto; padding: 8px 12px; }
 
-.brand { display: flex; align-items: center; gap: 9px; font-weight: 900; }
-.brand-mark { display: flex; width: 34px; height: 34px; align-items: center; justify-content: center; overflow: hidden; border: 2px solid #1f6044; border-radius: 50% 50% 50% 30%; background: #ffd76a; box-shadow: 2px 3px 0 rgba(31,96,68,.18); }
+.brand { display: flex; min-width: 0; align-items: center; gap: 9px; font-size: 18px; font-weight: 900; white-space: nowrap; }
+.brand-mark { display: flex; width: 34px; height: 34px; flex: 0 0 auto; align-items: center; justify-content: center; overflow: hidden; border: 2px solid #1f6044; border-radius: 50% 50% 50% 30%; background: #ffd76a; box-shadow: 2px 3px 0 rgba(31,96,68,.18); }
 .brand-mark image { width: 31px; height: 31px; }
 
 .home-intro { display: flex; min-height: 158px; align-items: center; justify-content: space-between; }

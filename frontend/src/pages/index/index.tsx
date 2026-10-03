@@ -9,6 +9,7 @@ import { ApiError, ensureLogin, generateQuiz } from '@/services/api'
 import { clearSession, startSession } from '@/store/session'
 import { getAuth } from '@/store/auth'
 import { setActiveTab } from '@/store/navigation'
+import { useNavigationLayout } from '@/utils/navigation'
 import type { UserProfile } from '@/types/api'
 import './index.scss'
 
@@ -17,6 +18,7 @@ type PageState = 'home' | 'loading' | 'error'
 const examples = ['为什么天空是蓝色？', '三分钟理解 RAG', '咖啡为什么能提神？']
 
 export default function IndexPage() {
+  const navigation = useNavigationLayout()
   const [pageState, setPageState] = useState<PageState>('home')
   const [topic, setTopic] = useState('')
   const [errorMessage, setErrorMessage] = useState('系统没有得到完整的题目。你的学习内容不会丢失。')
@@ -57,7 +59,7 @@ export default function IndexPage() {
 
   if (pageState === 'loading') {
     return (
-      <View className='page-shell tab-page loading-page'>
+      <View className='page-shell tab-page loading-page' style={{ paddingTop: `${navigation.contentTop}px` }}>
         <View className='appbar'><Text className='back' onClick={cancel}>‹</Text><Text className='appbar-title'>准备关卡</Text><View className='bar-space' /></View>
         <View className='loading-center'>
           <View className='plant-scene'>
@@ -79,7 +81,7 @@ export default function IndexPage() {
 
   if (pageState === 'error') {
     return (
-      <View className='page-shell tab-page error-page'>
+      <View className='page-shell tab-page error-page' style={{ paddingTop: `${navigation.contentTop}px` }}>
         <View className='appbar'><Text className='back' onClick={() => setPageState('home')}>‹</Text><Text className='appbar-title'>准备关卡</Text><View className='bar-space' /></View>
         <View className='error-content'>
           <Image className='panda-image error-panda' src={pandaSad} mode='aspectFit' />
@@ -94,13 +96,13 @@ export default function IndexPage() {
   }
 
   return (
-    <View className='page-shell tab-page home-page'>
-      <View className='appbar home-appbar'>
+    <View className='page-shell tab-page home-page' style={{ paddingTop: `${navigation.statusBarHeight}px` }}>
+      <View className='appbar home-appbar' style={{ height: `${navigation.navigationBarHeight}px`, paddingRight: `${navigation.rightInset}px` }}>
         <View className='brand'><View className='brand-mark'><Image src={pandaLogo} mode='aspectFit' /></View><Text>竹知岛</Text></View>
-        <View className='home-account' onClick={() => Taro.switchTab({ url: '/pages/learning/index' })}>
-          <Text className='home-user'>{user?.nickname || '竹岛学习者'}</Text>
-          <View className='mini-xp'><Text>☀</Text><Text>{user?.xp_total || 0} XP</Text></View>
-        </View>
+      </View>
+      <View className='home-account' onClick={() => Taro.switchTab({ url: '/pages/learning/index' })}>
+        <View className='home-greeting'><Text className='home-greeting-label'>你好，</Text><Text className='home-user'>{user?.nickname || '竹岛学习者'}</Text></View>
+        <View className='mini-xp'><Text>☀</Text><Text>{user?.xp_total || 0} XP</Text></View>
       </View>
       <View className='home-intro'>
         <View className='intro-copy'><Text className='home-title'>今天想闯过{`\n`}什么知识？</Text><Text className='home-description'>你给团团一个主题，团团把它变成五道小关卡。</Text></View>

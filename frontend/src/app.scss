@@ -29,8 +29,8 @@ button::after {
 .page-shell.tab-page,
 .learning-page.tab-page,
 .center-state.tab-page {
-  padding-bottom: calc(104px + constant(safe-area-inset-bottom));
-  padding-bottom: calc(104px + env(safe-area-inset-bottom));
+  padding-bottom: calc(96px + constant(safe-area-inset-bottom));
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
 }
 
 .appbar-title {
