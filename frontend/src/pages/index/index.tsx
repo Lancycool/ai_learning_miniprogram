@@ -9,6 +9,7 @@ import { ApiError, createRequestControl, ensureLogin, generateQuiz, getPendingGe
 import type { RequestControl } from '@/services/api'
 import { clearSession, startSession } from '@/store/session'
 import { getAuth } from '@/store/auth'
+import { getKnowledgeCapabilities } from '@/services/knowledge'
 import { setActiveTab } from '@/store/navigation'
 import { useNavigationLayout } from '@/utils/navigation'
 import type { UserProfile } from '@/types/api'
@@ -27,6 +28,7 @@ export default function IndexPage() {
   const [user, setUser] = useState<UserProfile | null>(getAuth().user)
   const requestToken = useRef(0)
   const [enableWebSearch, setEnableWebSearch] = useState(true)
+  const [knowledgeEnabled, setKnowledgeEnabled] = useState(false)
   const [taskStatus, setTaskStatus] = useState('系统正在提交任务。')
   const requestControl = useRef<RequestControl | null>(null)
   const visible = useRef(false)
@@ -35,10 +37,12 @@ export default function IndexPage() {
 
   useDidShow(() => {
     visible.current = true
+    setKnowledgeEnabled(false)
     setActiveTab(0)
     ensureLogin().then((profile) => {
       if (!visible.current) return
       setUser(profile)
+      void getKnowledgeCapabilities().then(capabilities => { if (visible.current && profile.user_id === getAuth().user?.user_id) setKnowledgeEnabled(capabilities.management_available) }).catch(() => undefined)
       const pending = getPendingGeneration()
       if (pending && !requestControl.current) {
         setTopic(pending.userInput)
@@ -147,7 +151,7 @@ export default function IndexPage() {
           onInput={(event) => setTopic(event.detail.value)}
         />
         <View className='input-tools'>
-          <Text onClick={() => Taro.showToast({ title: '文档和链接导入将在下一版开放', icon: 'none' })}>＋ 文档或链接</Text>
+          {knowledgeEnabled && <Text onClick={() => Taro.navigateTo({ url: '/pages/knowledge/index' })}>＋ 导入自己的资料</Text>}
           <Text>{topic.length} / 2000</Text>
         </View>
       </View>

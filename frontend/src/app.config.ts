@@ -13,6 +13,10 @@ export default defineAppConfig({
     'pages/monthly-report/index',
     'pages/profile/index',
     'pages/settings/index',
+    'pages/knowledge/index',
+    'pages/knowledge/document',
+    'pages/knowledge/import',
+    'pages/knowledge/bank',
   ],
   window: {
     navigationStyle: 'custom',

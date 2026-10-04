@@ -46,7 +46,7 @@ class CreateAttemptRequest(BaseModel):
 
 class SubmitAnswerRequest(BaseModel):
     question_id: str
-    selected_answers: list[str] = Field(min_length=1, max_length=4)
+    selected_answers: list[str] = Field(min_length=1, max_length=26)
     duration_ms: int = Field(ge=0, le=3_600_000)
     idempotency_key: str = Field(min_length=8, max_length=64)
 

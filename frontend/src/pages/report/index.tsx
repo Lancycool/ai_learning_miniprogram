@@ -4,6 +4,9 @@ import { Button, Text, View } from '@tarojs/components'
 import { getSession, startSession } from '@/store/session'
 import { createAttempt, getAttempt } from '@/services/api'
 import WebSearchInfo from '@/components/WebSearchInfo'
+import KnowledgeSources from '@/components/KnowledgeSources'
+import { privateLearning, PRIVATE_SHARE_QUOTE } from '@/utils/private-learning'
+import type { Question } from '@/types/api'
 import type { WebSearchMetadata } from '@/types/api'
 import './index.scss'
 
@@ -12,10 +15,11 @@ export default function ReportPage() {
   const { quiz, report } = session
   const [searchMetadata, setSearchMetadata] = useState<WebSearchMetadata | null | undefined>(quiz?.web_search)
   const [completed, setCompleted] = useState(false)
+  const [questions, setQuestions] = useState<Question[]>([])
   useEffect(() => {
     let active = true
     if (quiz?.attempt_id) getAttempt(quiz.attempt_id).then((data) => {
-      if (active) { setSearchMetadata(data.web_search); setCompleted(data.status === 'completed') }
+      if (active) { setSearchMetadata(data.web_search); setCompleted(data.status === 'completed'); setQuestions(data.questions) }
     }).catch(() => undefined)
     return () => { active = false }
   }, [quiz?.attempt_id])
@@ -25,13 +29,14 @@ export default function ReportPage() {
   }, [quiz, report])
 
   useShareAppMessage(() => ({
-    title: report?.share_quote || '我在竹知岛完成了一次知识闯关',
+    title: privateLearning(quiz, report) ? PRIVATE_SHARE_QUOTE : report?.share_quote || '我在竹知岛完成了一次知识闯关',
     path: '/pages/index/index',
   }))
 
   if (!quiz || !report) return <View className='page-shell' />
 
   async function replay(): Promise<void> {
+    if (!quiz?.quiz_id) { await Taro.navigateTo({ url: '/pages/mistakes/index' }); return }
     const attempt = await createAttempt(quiz!.quiz_id, 'replay')
     startSession({ ...quiz!, attempt_id: attempt.attempt_id, questions: attempt.questions, web_search: attempt.web_search })
     Taro.redirectTo({ url: '/pages/quiz/index' })
@@ -41,7 +46,7 @@ export default function ReportPage() {
     <View className='page-shell report-page'>
       <View className='appbar'><Text className='icon-button' onClick={() => Taro.navigateBack()}>‹</Text><Text className='appbar-title'>本次复盘</Text><Text className='icon-button' onClick={() => Taro.navigateTo({ url: '/pages/poster/index' })}>↗</Text></View>
       <View className='report-content'>
-        <WebSearchInfo metadata={searchMetadata} completed={completed} />
+        <WebSearchInfo metadata={searchMetadata} completed={completed} privateSource={privateLearning(quiz, report) ? quiz.source_type || 'knowledge' : undefined} />
         <View className='report-hero'>
           <View className='report-hero-copy'><Text className='report-hero-title'>{report.accuracy >= 80 ? '你已经理解了' : '你正在理解'}{`\n`}{quiz.title.replace('闯关', '').trim()}</Text><Text className='report-hero-description'>{report.weak_points.length ? `你需要再看看“${report.weak_points[0]}”。` : '你已经掌握了本轮的全部知识点。'}</Text></View>
           <View className='score-ring' style={{ background: `conic-gradient(#ffd76a 0 ${report.accuracy}%, rgba(255,255,255,.2) ${report.accuracy}% 100%)` }}><Text>{report.accuracy}%</Text></View>
@@ -65,6 +70,7 @@ export default function ReportPage() {
           <Button className='secondary-button' onClick={replay}>再练一次</Button>
           <Button className='primary-button' onClick={() => Taro.navigateTo({ url: '/pages/poster/index' })}>生成分享卡</Button>
         </View>
+        {completed && questions.some(q => q.sources) && <View className='report-section'><Text className='section-title'>本次题目的资料依据</Text>{questions.map((q, index) => q.sources && <View key={q.question_id}><Text>第 {index+1} 题 · {q.stem}</Text><KnowledgeSources sources={q.sources} completed={completed} /></View>)}</View>}
       </View>
     </View>
   )

@@ -13,10 +13,12 @@ from app.services.learning_rules import calculate_mastery, next_review_state, up
 from app.models.web_search import search_view
 
 
-def question_view(question: Question, reveal: bool = False) -> dict:
+def question_view(question: Question, reveal: bool = False, reveal_sources: bool = False) -> dict:
     value = {"question_id": question.public_id, "type": question.question_type, "stem": question.stem, "options": question.options_json, "knowledge_point": question.knowledge_point, "difficulty": question.difficulty}
     if reveal:
         value.update({"answer": question.answer_json, "explanation": question.explanation})
+    if reveal_sources and question.source_metadata_json:
+        value["sources"] = question.source_metadata_json
     return value
 
 
@@ -29,6 +31,12 @@ class LearningService:
         if not quiz:
             raise ResourceNotFoundError()
         questions = (await self.db.scalars(select(Question).where(Question.quiz_id == quiz.id).order_by(Question.sequence_no))).all()
+        if quiz.source_type == "original" and attempt_type == "normal":
+            await self.db.scalar(select(User.id).where(User.id == user.id).with_for_update())
+            previous = await self.db.scalar(select(LearningAttempt.id).where(LearningAttempt.user_id == user.id,
+                LearningAttempt.quiz_id == quiz.id, LearningAttempt.attempt_type == "normal").limit(1).with_for_update())
+            if previous:
+                attempt_type = "replay"
         attempt = LearningAttempt(public_id=public_id("att"), user_id=user.id, quiz_id=quiz.id, attempt_type=attempt_type, total_count=len(questions))
         self.db.add(attempt)
         await self.db.flush()
@@ -48,11 +56,12 @@ class LearningService:
         rows = (await self.db.execute(select(Question, AnswerRecord).join(AttemptQuestion, AttemptQuestion.question_id == Question.id).outerjoin(AnswerRecord, and_(AnswerRecord.attempt_id == attempt.id, AnswerRecord.question_id == Question.id)).where(AttemptQuestion.attempt_id == attempt.id).order_by(AttemptQuestion.sequence_no))).all()
         items = []
         for question, answer in rows:
-            item = question_view(question, reveal=answer is not None or attempt.status == "completed")
+            item = question_view(question, reveal=answer is not None or attempt.status == "completed", reveal_sources=attempt.status == "completed")
             if answer:
                 item["result"] = {"selected_answers": answer.selected_answers_json, "is_correct": answer.is_correct, "duration_ms": answer.duration_ms}
             items.append(item)
         report_data = None
+        is_private = any(q.source_metadata_json for q, _ in rows)
         if report:
             report_data = {
                 "mastered_points": report.mastered_points_json,
@@ -60,8 +69,9 @@ class LearningService:
                 "three_line_summary": report.three_line_summary_json,
                 "advice": report.advice_json,
                 "share_quote": report.share_quote,
+                "is_private": is_private,
             }
-        return {"attempt_id": attempt.public_id, "title": quiz.title if quiz else "错题复习", "quiz_id": quiz.public_id if quiz else None, "attempt_type": attempt.attempt_type, "status": attempt.status, "current_sequence": attempt.current_sequence, "correct_count": attempt.correct_count, "total_count": attempt.total_count, "accuracy": attempt.accuracy, "earned_xp": attempt.earned_xp, "started_at": attempt.started_at, "completed_at": attempt.completed_at, "report": report_data, "questions": items, "web_search": search_view(quiz.web_search_metadata_json, reveal=attempt.status == "completed") if quiz else None}
+        return {"attempt_id": attempt.public_id, "title": quiz.title if quiz else "错题复习", "quiz_id": quiz.public_id if quiz else None, "attempt_type": attempt.attempt_type, "status": attempt.status, "current_sequence": attempt.current_sequence, "correct_count": attempt.correct_count, "total_count": attempt.total_count, "accuracy": attempt.accuracy, "earned_xp": attempt.earned_xp, "started_at": attempt.started_at, "completed_at": attempt.completed_at, "report": report_data, "questions": items, "is_private": is_private, "source_type": quiz.source_type if quiz else "review", "web_search": search_view(quiz.web_search_metadata_json, reveal=attempt.status == "completed") if quiz else None}
 
     async def submit_answer(self, user: User, attempt_public_id: str, question_public_id: str, selected: list[str], duration_ms: int, key: str) -> dict:
         attempt = await self.db.scalar(select(LearningAttempt).where(LearningAttempt.public_id == attempt_public_id, LearningAttempt.user_id == user.id))

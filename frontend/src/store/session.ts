@@ -1,5 +1,6 @@
 import Taro from '@tarojs/taro'
 import type { AnswerRecord, Quiz, Report } from '@/types/api'
+import { getAuth } from './auth'
 
 const STORAGE_KEY = 'bamboo_quiz_session_v1'
 
@@ -9,6 +10,7 @@ export interface LearningSession {
   report: Report | null
   attemptId: string
   baseXp: number
+  ownerId?: string
 }
 
 const emptySession: LearningSession = {
@@ -35,11 +37,14 @@ function saveSession(): void {
 }
 
 export function getSession(): LearningSession {
+  if (session.ownerId && session.ownerId !== getAuth().user?.user_id) {
+    clearSession()
+  }
   return session
 }
 
 export function startSession(quiz: Quiz): void {
-  session = { ...emptySession, quiz, attemptId: quiz.attempt_id }
+  session = { ...emptySession, quiz, attemptId: quiz.attempt_id, ownerId: getAuth().user?.user_id }
   saveSession()
 }
 

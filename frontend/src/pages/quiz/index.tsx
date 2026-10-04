@@ -3,12 +3,14 @@ import Taro from '@tarojs/taro'
 import { Button, Image, Text, View } from '@tarojs/components'
 import pandaHappy from '@/assets/panda-happy.svg'
 import pandaSad from '@/assets/panda-sad.svg'
-import { completeAttempt, generateReport, submitAnswer } from '@/services/api'
+import { completeAttempt, generateReport, getAttempt, submitAnswer } from '@/services/api'
 import { clearSession, getSession, saveAnswers, saveReport } from '@/store/session'
 import type { AnswerRecord, AnswerResult } from '@/types/api'
 import { questionTypeLabel } from '@/utils/quiz'
 import './index.scss'
 import WebSearchInfo from '@/components/WebSearchInfo'
+import { privateLearning } from '@/utils/private-learning'
+import { getAuth } from '@/store/auth'
 
 type QuizView = 'question' | 'feedback' | 'complete'
 
@@ -24,24 +26,43 @@ export default function QuizPage() {
   const [reportLoading, setReportLoading] = useState(false)
   const [lastResult, setLastResult] = useState<AnswerResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [restoring, setRestoring] = useState(privateLearning(quiz)), [restoreError, setRestoreError] = useState('')
   const questionStartedAt = useRef(Date.now())
 
   useEffect(() => {
     if (!quiz) Taro.reLaunch({ url: '/pages/index/index' })
   }, [quiz])
 
+  useEffect(() => {
+    if (!quiz || !privateLearning(quiz)) return
+    let active = true
+    const owner = getAuth().user?.user_id
+    getAttempt(quiz.attempt_id).then(async data => {
+      if (!active || owner !== getAuth().user?.user_id) return
+      const restored: AnswerRecord[] = data.questions.flatMap(q => q.result ? [{ question_id: q.question_id, ...q.result }] : [])
+      const next = data.questions.findIndex(q => !q.result)
+      setRecords(restored); saveAnswers(restored); setEarnedXp(data.earned_xp); setHearts(Math.max(0, 3-restored.filter(r => !r.is_correct).length))
+      setQuestionIndex(next >= 0 ? next : quiz.questions.length-1)
+      if (data.status === 'completed') setView('complete')
+      else if (next < 0) { const completed = await completeAttempt(quiz.attempt_id); if (active) { setEarnedXp(completed.earned_xp); setView('complete') } }
+      if (active) setRestoring(false)
+    }).catch(reason => { if (active) { setRestoreError(reason instanceof Error ? reason.message : '学习记录恢复失败'); setRestoring(false) } })
+    return () => { active = false }
+  }, [quiz?.attempt_id])
+
   const question = quiz?.questions[questionIndex]
   const lastRecord = records[records.length - 1]
   const correctCount = useMemo(() => records.filter((record) => record.is_correct).length, [records])
 
   if (!quiz || !question) return <View className='page-shell' />
+  if (restoring || restoreError) return <View className='page-shell'><Text>{restoreError || '系统正在恢复你的答题进度…'}</Text><Button onClick={() => Taro.navigateBack()}>返回</Button></View>
   const currentQuiz = quiz
   const currentQuestion = question
 
   function leaveQuiz(): void {
     Taro.showModal({
       title: '退出本次闯关？',
-      content: '当前答题进度不会保留。',
+      content: privateLearning(quiz) ? '系统会保留已提交的答案。你可以从学习记录继续闯关。' : '当前答题进度不会保留。',
       confirmText: '退出',
       confirmColor: '#e96655',
       success: (result) => {
@@ -114,7 +135,7 @@ export default function QuizPage() {
     const selectedText = question.options.filter((option) => selected.includes(option.key)).map((option) => `${option.key} ${option.text}`).join('、')
     const answerText = question.options.filter((option) => lastResult?.correct_answers.includes(option.key)).map((option) => `${option.key} ${option.text}`).join('、')
     return (
-      <View className='page-shell feedback-page'>
+      <View className={`page-shell feedback-page ${privateLearning(quiz) ? 'private-quiz-page' : ''}`}>
         <View className='appbar'><Text className='icon-button' onClick={leaveQuiz}>×</Text><Text className='appbar-title'>第 {questionIndex + 1} 题讲解</Text><View className='mini-xp'>☀ {initial.baseXp + earnedXp}</View></View>
         <View className='feedback-stage'><Image className='feedback-panda panda-image' src={correct ? pandaHappy : pandaSad} mode='aspectFit' /></View>
         <Text className={`feedback-heading ${correct ? '' : 'wrong-title'}`}>{correct ? '答对了，竹子长高啦！' : '这一步容易混淆'}</Text>
@@ -125,7 +146,7 @@ export default function QuizPage() {
         )}
         <View className={`explanation ${correct ? '' : 'wrong-note'}`}>
           <Text className='explanation-title'>{correct ? '为什么这样选？' : '团团帮你理一遍'}</Text>
-          <Text className='explanation-copy'>{lastResult?.explanation}</Text>
+          <Text className='explanation-copy'>{lastResult?.explanation || '原文没有提供讲解。'}</Text>
           <Text className='knowledge-tag'>{correct ? `知识点：${question.knowledge_point}` : '已加入本轮重点复习'}</Text>
         </View>
         <View className='feedback-action'><Button className='primary-button' onClick={continueQuiz}>{questionIndex === quiz.questions.length - 1 ? '查看通关结果' : correct ? '继续下一题' : '我明白了，继续'}</Button></View>
@@ -157,9 +178,9 @@ export default function QuizPage() {
   }
 
   return (
-    <View className='page-shell quiz-page'>
+    <View className={`page-shell quiz-page ${privateLearning(quiz) ? 'private-quiz-page' : ''}`}>
       <View className='appbar'><Text className='icon-button' onClick={leaveQuiz}>×</Text><Text className='appbar-title quiz-app-title'>{quiz.title}</Text><View className='mini-xp'>☀ {initial.baseXp + earnedXp}</View></View>
-      <WebSearchInfo metadata={quiz.web_search} />
+      <WebSearchInfo metadata={quiz.web_search} privateSource={privateLearning(quiz) ? quiz.source_type || 'knowledge' : undefined} />
       <View className='quiz-top'>
         <View className='bamboo-progress'>
           {quiz.questions.map((item, index) => <View key={item.question_id} className={`progress-piece ${index < questionIndex ? 'done' : index === questionIndex ? 'current' : ''}`} />)}

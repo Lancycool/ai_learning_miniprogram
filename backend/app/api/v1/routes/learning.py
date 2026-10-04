@@ -9,12 +9,14 @@ from app.db.models import AnswerRecord as DbAnswerRecord, AttemptQuestion, Learn
 from app.models.common import ApiResponse
 from app.models.quiz import AnswerRecord, Difficulty, Option, Question, QuestionType
 from app.models.report import ReportGenerateRequest
+from app.models.private_learning import PrivateReportGenerateRequest, PrivateReportQuestion, OriginalAnswerRecord
 from app.models.user_system import CreateAttemptRequest, SubmitAnswerRequest
 from app.services.learning_service import LearningService
 from app.services.report_service import ReportGenerator, ReportService
 from app.services.scoring_service import ScoringService
 from sqlalchemy import select
 from app.services.auth_service import public_id
+from langsmith import tracing_context
 
 
 router = APIRouter(tags=["learning"])
@@ -50,16 +52,31 @@ async def report(attempt_id: str, user: Annotated[User, Depends(get_current_user
         from app.core.exceptions import ResourceNotFoundError
         raise ResourceNotFoundError()
     saved = await db.scalar(select(LearningReport).where(LearningReport.attempt_id == attempt.id))
+    private_count = await db.scalar(select(DbQuestion.id).join(AttemptQuestion, AttemptQuestion.question_id == DbQuestion.id)
+        .where(AttemptQuestion.attempt_id == attempt.id, DbQuestion.source_metadata_json.is_not(None)).limit(1))
+    is_private = private_count is not None
     if saved:
-        return ApiResponse(data={"accuracy": attempt.accuracy, "correct_count": attempt.correct_count, "total_count": attempt.total_count, "earned_xp": attempt.earned_xp, "mastered_points": saved.mastered_points_json, "weak_points": saved.weak_points_json, "three_line_summary": saved.three_line_summary_json, "advice": saved.advice_json, "share_quote": saved.share_quote})
+        return ApiResponse(data={"accuracy": attempt.accuracy, "correct_count": attempt.correct_count, "total_count": attempt.total_count, "earned_xp": attempt.earned_xp, "mastered_points": saved.mastered_points_json, "weak_points": saved.weak_points_json, "three_line_summary": saved.three_line_summary_json, "advice": saved.advice_json, "share_quote": saved.share_quote, "is_private": is_private})
     quiz = await db.get(Quiz, attempt.quiz_id) if attempt.quiz_id else None
     rows = (await db.execute(select(DbQuestion, DbAnswerRecord).join(AttemptQuestion, AttemptQuestion.question_id == DbQuestion.id).join(DbAnswerRecord, (DbAnswerRecord.attempt_id == attempt.id) & (DbAnswerRecord.question_id == DbQuestion.id)).where(AttemptQuestion.attempt_id == attempt.id).order_by(AttemptQuestion.sequence_no))).all()
-    request = ReportGenerateRequest(quiz_id=quiz.public_id if quiz else attempt.public_id, topic=quiz.title if quiz else "错题复习", questions=[Question(id=q.public_id, type=QuestionType(q.question_type), stem=q.stem, options=[Option.model_validate(x) for x in q.options_json], answer=q.answer_json, explanation=q.explanation, knowledge_point=q.knowledge_point, difficulty=Difficulty(q.difficulty)) for q, _ in rows], answer_records=[AnswerRecord(question_id=q.public_id, selected_answers=a.selected_answers_json, is_correct=a.is_correct, duration_ms=a.duration_ms) for q, a in rows])
-    generated = await ReportService(generator, ScoringService()).generate(request)
+    request_model = PrivateReportGenerateRequest if is_private else ReportGenerateRequest
+    question_model = PrivateReportQuestion if is_private else Question
+    answer_model = OriginalAnswerRecord if is_private else AnswerRecord
+    topic = quiz.title if quiz else "错题复习"
+    request = request_model(quiz_id=quiz.public_id if quiz else attempt.public_id, topic=topic if len(topic) >= 2 else f"原题{topic}",
+        questions=[question_model(id=q.public_id, type=QuestionType(q.question_type), stem=q.stem,
+            options=q.options_json, answer=q.answer_json, explanation=q.explanation or None if is_private else q.explanation,
+            knowledge_point=q.knowledge_point, difficulty=Difficulty(q.difficulty)) for q, _ in rows],
+        answer_records=[answer_model(question_id=q.public_id, selected_answers=a.selected_answers_json,
+            is_correct=a.is_correct, duration_ms=a.duration_ms) for q, a in rows])
+    with tracing_context(enabled=False if is_private else None):
+        generated = await ReportService(generator, ScoringService()).generate(request)
     generated = generated.model_copy(update={"earned_xp": attempt.earned_xp})
+    if is_private:
+        generated = generated.model_copy(update={"share_quote": "每一次练习，都是新的进步"})
     db.add(LearningReport(public_id=public_id("rpt"), attempt_id=attempt.id, mastered_points_json=generated.mastered_points, weak_points_json=generated.weak_points, three_line_summary_json=generated.three_line_summary, advice_json=generated.advice, share_quote=generated.share_quote, prompt_version="report_prompt_v1"))
     await db.commit()
-    return ApiResponse(data=generated.model_dump())
+    return ApiResponse(data={**generated.model_dump(), "is_private": is_private})
 
 
 @router.get("/learning/overview", response_model=ApiResponse[dict])

@@ -3,6 +3,7 @@ import Taro, { useShareAppMessage } from '@tarojs/taro'
 import { Button, Canvas, Image, Text, View } from '@tarojs/components'
 import pandaHappy from '@/assets/panda-happy.svg'
 import { getSession } from '@/store/session'
+import { privateLearning, PRIVATE_SHARE_QUOTE, shareContent } from '@/utils/private-learning'
 import './index.scss'
 
 function wrapText(context: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
@@ -30,11 +31,12 @@ export default function PosterPage() {
   }, [quiz, report])
 
   useShareAppMessage(() => ({
-    title: report?.share_quote || '我在竹知岛完成了一次知识闯关',
+    title: privateLearning(quiz, report) ? PRIVATE_SHARE_QUOTE : report?.share_quote || '我在竹知岛完成了一次知识闯关',
     path: '/pages/index/index',
   }))
 
   if (!quiz || !report) return <View className='page-shell' />
+  const share = shareContent(quiz, report)
 
   async function buildPoster(): Promise<string> {
     if (process.env.TARO_ENV !== 'weapp') throw new Error('请在微信开发者工具或真机中保存分享卡')
@@ -59,7 +61,7 @@ export default function PosterPage() {
 
     context.fillStyle = '#202520'
     context.font = '700 54px sans-serif'
-    const quoteLines = wrapText(context, report!.share_quote, 500).slice(0, 4)
+    const quoteLines = wrapText(context, share.quote, 500).slice(0, 4)
     quoteLines.forEach((line, index) => context.fillText(line, 54, 190 + index * 72))
     context.fillStyle = '#ffd76a'
     context.fillRect(54, 190 + quoteLines.length * 72 + 10, 74, 10)
@@ -69,7 +71,7 @@ export default function PosterPage() {
     context.fillText('我刚刚闯过', 54, 570)
     context.fillStyle = '#1f6044'
     context.font = '700 28px sans-serif'
-    wrapText(context, `《${quiz!.title.replace('闯关', '').trim()}》 · 掌握度 ${report!.accuracy}%`, 500)
+    wrapText(context, share.score, 500)
       .slice(0, 2)
       .forEach((line, index) => context.fillText(line, 54, 620 + index * 40))
 
@@ -143,19 +145,19 @@ export default function PosterPage() {
       <View className='poster-wrap'>
         <View className='poster-card'>
           <Text className='poster-brand'>竹知岛 · 今日闯关</Text>
-          <Text className='poster-quote'>{report.share_quote}</Text>
+          <Text className='poster-quote'>{share.quote}</Text>
           <View className='poster-line' />
           <Text className='poster-topic'>我刚刚闯过</Text>
-          <Text className='poster-score'>《{quiz.title.replace('闯关', '').trim()}》 · 掌握度 {report.accuracy}%</Text>
+          <Text className='poster-score'>{share.score}</Text>
           <Image className='poster-panda panda-image' src={pandaHappy} mode='aspectFit' />
           <Text className='poster-foot'>和团团一起，把知识变成关卡</Text>
           <View className='qr-placeholder'><Text>小程序码</Text></View>
         </View>
         <Text className='poster-tip'>保存图片后，你可以发送给微信好友</Text>
+        {privateLearning(quiz, report) && <Text className='poster-tip'>分享卡只展示通用文案和成绩。你的资料标题、题目和引用会保留在私有学习记录中。</Text>}
         <Button className='primary-button save-button' loading={saving} onClick={savePoster}>{saving ? '正在生成' : '保存到相册'}</Button>
       </View>
       <Canvas id='shareCanvas' canvasId='shareCanvas' type='2d' className='share-canvas' />
     </View>
   )
 }
-

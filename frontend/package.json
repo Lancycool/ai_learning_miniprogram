@@ -6,6 +6,7 @@
   "scripts": {
     "test:web-search": "node tests/web-search.cjs",
     "test:quiz-tasks": "node tests/quiz-tasks.cjs",
+    "test:knowledge": "node tests/knowledge.cjs && node tests/knowledge-pages.cjs",
     "dev:weapp": "taro build --type weapp --watch",
     "build:weapp": "taro build --type weapp",
     "dev:h5": "taro build --type h5 --watch",

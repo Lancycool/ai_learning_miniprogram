@@ -2,7 +2,7 @@ import Taro from '@tarojs/taro'
 import { clearAuth, getAuth, saveAuth, updateUser } from '@/store/auth'
 import type { AnswerResult, ApiEnvelope, CompletionResult, HistoryItem, LearningOverview, LoginData, Quiz, QuizGenerationTask, Report, UserProfile } from '@/types/api'
 
-const API_BASE_URL = process.env.TARO_APP_API_BASE_URL || 'http://127.0.0.1:8000'
+export const API_BASE_URL = process.env.TARO_APP_API_BASE_URL || 'http://127.0.0.1:8000'
 const QUIZ_REQUEST_TIMEOUT_MS = 60_000
 const TASK_REQUEST_TIMEOUT_MS = 15_000
 const QUIZ_TASK_POLL_INTERVAL_MS = 3_000
@@ -15,25 +15,39 @@ export function createRequestControl(): RequestControl {
   return { cancelled: false, cancel() { this.cancelled = true; this.task?.abort(); this.cancelWait?.() } }
 }
 
-async function raw<T>(path: string, method: 'GET' | 'POST' | 'PATCH' = 'GET', data?: unknown, authenticated = true, retry = true, control?: RequestControl): Promise<T> {
+async function raw<T>(path: string, method: 'GET' | 'POST' | 'PATCH' | 'DELETE' = 'GET', data?: unknown, authenticated = true, retry = true, control?: RequestControl, expectedUserId?: string): Promise<T> {
+  if (authenticated && !expectedUserId) expectedUserId = getAuth().user?.user_id
   const token = getAuth().accessToken
   try {
     if (control?.cancelled) throw new ApiError('用户已取消生成')
+    if (expectedUserId && getAuth().user?.user_id !== expectedUserId) throw new ApiError('账号已经变化，请重新打开页面')
     const task = Taro.request<ApiEnvelope<T>>({ url: `${API_BASE_URL}${path}`, method, data, timeout: path.startsWith('/api/v1/quizzes/generation-tasks') ? TASK_REQUEST_TIMEOUT_MS : QUIZ_REQUEST_TIMEOUT_MS, header: { 'content-type': 'application/json', ...(authenticated && token ? { Authorization: `Bearer ${token}` } : {}) } })
     if (control) control.task = task
     let response: Awaited<typeof task>
     try { response = await task } finally { if (control?.task === task) control.task = undefined }
     if (control?.cancelled) throw new ApiError('用户已取消生成')
+    if (expectedUserId && getAuth().user?.user_id !== expectedUserId) throw new ApiError('账号已经变化，请重新打开页面')
     const envelope = response.data
-    if (response.statusCode === 401 && authenticated && retry && getAuth().refreshToken) { await refreshAuth(); return raw<T>(path, method, data, authenticated, false, control) }
+    if (response.statusCode === 401 && authenticated && retry && getAuth().refreshToken) { await refreshAuth(); return raw<T>(path, method, data, authenticated, false, control, expectedUserId) }
     if (response.statusCode < 200 || response.statusCode >= 300 || envelope.code !== 0 || envelope.data == null) throw new ApiError(envelope.message || '请求失败，请稍后重试', envelope.code)
     return envelope.data
   } catch (error) { if (error instanceof ApiError) throw error; throw new ApiError('网络连接失败，请检查后重试') }
 }
 
-async function refreshAuth(): Promise<void> {
-  if (!refreshPromise) refreshPromise = raw<LoginData>('/api/v1/auth/refresh', 'POST', { refresh_token: getAuth().refreshToken }, false, false).then(saveAuth).catch((error) => { clearAuth(); throw error }).finally(() => { refreshPromise = null })
+export async function refreshAuth(): Promise<void> {
+  if (!refreshPromise) {
+    const previous = getAuth()
+    refreshPromise = raw<LoginData>('/api/v1/auth/refresh', 'POST', { refresh_token: previous.refreshToken }, false, false).then(data => {
+      if (getAuth().user?.user_id !== previous.user?.user_id || getAuth().refreshToken !== previous.refreshToken) throw new ApiError('账号已经变化，请重新打开页面')
+      saveAuth(data)
+    }).catch(error => { if (getAuth().user?.user_id === previous.user?.user_id && getAuth().refreshToken === previous.refreshToken) clearAuth(); throw error }).finally(() => { refreshPromise = null })
+  }
   return refreshPromise
+}
+export function requestKnowledge<T>(path: string, method: 'GET' | 'POST' | 'PATCH' | 'DELETE' = 'GET', data?: unknown, control?: RequestControl): Promise<T> {
+  const owner = getAuth().user?.user_id
+  if (!owner) return Promise.reject(new ApiError('请先登录'))
+  return raw<T>(path, method, data, true, true, control, owner)
 }
 export async function ensureLogin(): Promise<UserProfile> {
   if (getAuth().accessToken && getAuth().user) return getAuth().user!
@@ -115,7 +129,7 @@ export function getHistory(keyword = '', status = ''): Promise<HistoryItem[]> {
   const query = [keyword ? `keyword=${encodeURIComponent(keyword)}` : '', status ? `status=${encodeURIComponent(status)}` : ''].filter(Boolean).join('&')
   return raw(`/api/v1/learning/history${query ? `?${query}` : ''}`)
 }
-export function getAttempt(id: string): Promise<any> { return raw(`/api/v1/attempts/${id}`) }
+export function getAttempt(id: string): Promise<import('@/types/api').LearningAttemptDetail> { return raw(`/api/v1/attempts/${id}`) }
 export function getMistakes(): Promise<any> { return raw('/api/v1/mistakes') }
 export function createReview(): Promise<any> { return raw('/api/v1/reviews', 'POST') }
 export function getGarden(): Promise<any[]> { return raw('/api/v1/learning/garden') }

@@ -1,4 +1,7 @@
 .quiz-page { position: relative; height: 100vh; overflow: hidden; background: #fbfcf5; }
+.private-quiz-page { min-height: 100vh; height: auto; overflow: visible; padding-bottom: 22px; }
+.private-quiz-page .question-title, .private-quiz-page .option-text, .private-quiz-page .explanation-copy { white-space: pre-wrap; word-break: break-word; }
+.private-quiz-page .quiz-submit, .private-quiz-page .feedback-action { position: sticky; bottom: 0; padding: 16px 0 calc(16px + env(safe-area-inset-bottom)); margin-top: 20px; background: #fffdf5; }
 .quiz-app-title { max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .quiz-top { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 0 2px; }
 .bamboo-progress { display: flex; flex: 1; gap: 4px; }

@@ -16,6 +16,8 @@ export interface Question {
   explanation?: string
   knowledge_point: string
   difficulty: Difficulty
+  sources?: import('./knowledge').SourceSnapshot
+  result?: { selected_answers: string[]; is_correct: boolean; duration_ms: number }
 }
 
 export interface Quiz {
@@ -26,6 +28,8 @@ export interface Quiz {
   user_input: string
   questions: Question[]
   web_search?: WebSearchMetadata | null
+  source_type?: string
+  is_private?: boolean
 }
 
 export interface QuizGenerationTask {
@@ -37,6 +41,12 @@ export interface QuizGenerationTask {
   completed_at: string | null
   error: { code: string; message: string } | null
   result: Quiz | null
+}
+
+export interface LearningAttemptDetail {
+  attempt_id: string; quiz_id: string | null; title: string; status: 'in_progress' | 'completed' | 'abandoned'
+  source_type: string; is_private: boolean; questions: Question[]; earned_xp: number
+  total_count: number; correct_count: number; accuracy: number; web_search?: WebSearchMetadata | null
 }
 
 export interface WebSearchMetadata {
@@ -91,6 +101,7 @@ export interface AnswerRecord {
 }
 
 export interface Report {
+  is_private?: boolean
   accuracy: number
   correct_count: number
   total_count: number

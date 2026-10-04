@@ -5,11 +5,13 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from contextlib import asynccontextmanager
+import logging
 
 from app.api.v1.router import router as v1_router
 from app.core.config import get_settings
 from app.core.exceptions import AppError
 from app.core.database import SessionLocal
+from app.core.knowledge_runtime import start_knowledge_worker
 from app.api.dependencies import get_quiz_generator, get_web_search_service
 from app.services.quiz_task_service import QuizTaskWorker
 
@@ -18,9 +20,15 @@ from app.services.quiz_task_service import QuizTaskWorker
 async def lifespan(_: FastAPI):
     worker = QuizTaskWorker(SessionLocal, get_settings(), get_quiz_generator, get_web_search_service)
     worker.start()
+    knowledge_worker = start_knowledge_worker(SessionLocal, get_settings())
     try:
         yield
     finally:
+        if knowledge_worker is not None:
+            try:
+                await knowledge_worker.close()
+            except Exception as exc:
+                logging.getLogger(__name__).warning("knowledge_worker_close_failed type=%s", type(exc).__name__)
         await worker.close()
 
 
@@ -36,7 +44,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
     allow_credentials=settings.cors_origin_list != ["*"],
-    allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 app.include_router(v1_router)

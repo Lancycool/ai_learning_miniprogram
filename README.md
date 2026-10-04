@@ -2,6 +2,8 @@
 
 这个仓库包含 MVP 的 Taro 小程序前端和 FastAPI 后端。用户可以输入学习主题。系统会生成五道题，并提供即时反馈、经验值、学习报告和分享海报。
 
+用户也可以上传自己的资料，按章节生成有依据的新题，或审核并完整导入单选、多选和判断原题，再按每组最多五题进行练习。
+
 ## 目录
 
 - `frontend/`：Taro 4 + React + TypeScript 小程序。
@@ -86,6 +88,8 @@ uv run python -m scripts.smoke_live
 cd frontend
 pnpm typecheck
 pnpm test:web-search
+pnpm test:quiz-tasks
+pnpm test:knowledge
 pnpm build:weapp
 pnpm build:h5
 ```
@@ -93,6 +97,14 @@ pnpm build:h5
 ## 当前 MVP 边界
 
 当前版本包含账号系统、MySQL、历史学习中心和可选 Tavily 联网增强。海报中的二维码是视觉占位符。后续版本需要接入真实小程序码生成接口。
+
+## 私有知识库
+
+系统已经实现 PDF、DOCX、Markdown、TXT、文字资料、章节选择、Agentic RAG 新题和完整原题审核。系统使用用户现有的百炼北京原生 API 配置，并提供独立 `ENABLE_KNOWLEDGE_BASE` 开关，缺省关闭。用户需要在 `backend/.env` 设置 `ENABLE_KNOWLEDGE_BASE=True` 并重启后端，首页才会显示资料入口。默认私有文件和 Chroma 目录位于 `backend/data/`，不能公开访问或提交到 Git。
+
+后端全部 262 项测试通过，整体覆盖率为 90.18%。前端测试、类型检查和双端构建通过。H5 已完成上传、审核、尾组通关、报告和分享卡检查。微信文件适配器已经通过自动测试，但微信开发者工具和真机操作仍需要检查。使用流程见 [接口与使用](docs/私有知识库接口与使用.md)。
+
+本版部署使用一个后端服务进程。管理员需要一起备份 MySQL、原文件和 Chroma。配置、依赖、限额与回滚规则见 [部署说明](docs/私有知识库部署说明.md)，实际开发测试结果见 [验收记录](docs/私有知识库开发验收.md)。
 
 ## 可选联网出题
 

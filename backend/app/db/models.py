@@ -2,6 +2,7 @@ from datetime import date, datetime
 
 from sqlalchemy import BigInteger, Boolean, Date, DateTime, ForeignKey, Index, Integer, JSON, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects.mysql import MEDIUMTEXT
 
 from app.db.base import Base, TimestampMixin, utc_now
 
@@ -72,6 +73,7 @@ class Quiz(TimestampMixin, Base):
     model_name: Mapped[str | None] = mapped_column(String(64))
     prompt_version: Mapped[str | None] = mapped_column(String(32))
     web_search_metadata_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    knowledge_metadata_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     questions: Mapped[list["Question"]] = relationship(back_populates="quiz", order_by="Question.sequence_no", cascade="all, delete-orphan")
 
 
@@ -83,10 +85,12 @@ class Question(Base):
     quiz_id: Mapped[int] = mapped_column(ForeignKey("quizzes.id", ondelete="CASCADE"), nullable=False)
     sequence_no: Mapped[int] = mapped_column(Integer, nullable=False)
     question_type: Mapped[str] = mapped_column(String(16), nullable=False)
-    stem: Mapped[str] = mapped_column(String(500), nullable=False)
+    stem: Mapped[str] = mapped_column(MEDIUMTEXT, nullable=False)
     options_json: Mapped[list[dict]] = mapped_column(JSON, nullable=False)
     answer_json: Mapped[list[str]] = mapped_column(JSON, nullable=False)
-    explanation: Mapped[str] = mapped_column(String(1200), nullable=False)
+    explanation: Mapped[str] = mapped_column(MEDIUMTEXT, nullable=False)
+    source_metadata_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    original_item_id: Mapped[int | None] = mapped_column(ForeignKey("question_bank_items.id", name="fk_question_original_item", ondelete="SET NULL"))
     knowledge_point: Mapped[str] = mapped_column(String(80), nullable=False)
     difficulty: Mapped[str] = mapped_column(String(16), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(6), default=utc_now, nullable=False)
@@ -223,3 +227,11 @@ class UserKnowledgeProgress(Base):
     mastery: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     status: Mapped[str] = mapped_column(String(16), default="learning", nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(6), default=utc_now, onupdate=utc_now, nullable=False)
+
+
+# Keep the existing metadata import entry point for migrations and MySQL fixtures.
+from app.db.knowledge_models import (  # noqa: E402,F401
+    KnowledgeBase, KnowledgeDocument, KnowledgeDocumentVersion, KnowledgeChapter,
+    KnowledgeProcessingTask, QuestionImportDraft, QuestionBank, QuestionBankItem,
+    QuestionPracticeGroup,
+)

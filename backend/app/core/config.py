@@ -49,6 +49,30 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = Field(default=30, alias="REFRESH_TOKEN_EXPIRE_DAYS")
     avatar_storage_backend: str = Field(default="local", alias="AVATAR_STORAGE_BACKEND")
     avatar_local_directory: str = Field(default="./data/avatars", alias="AVATAR_LOCAL_DIRECTORY")
+    enable_knowledge_base: bool = Field(default=False, alias="ENABLE_KNOWLEDGE_BASE")
+    bailian_api_model: str = Field(default="text-embedding-v4", alias="BAILIAN_API_MODEL")
+    bailian_api_key: SecretStr = Field(default=SecretStr(""), alias="BAILIAN_API_KEY")
+    bailian_api_base_url: str = Field(default="https://dashscope.aliyuncs.com/api/v1", alias="BAILIAN_API_BASE_URL")
+    knowledge_storage_directory: str = Field(default="./data/knowledge", alias="KNOWLEDGE_STORAGE_DIRECTORY")
+    chroma_persist_directory: str = Field(default="./data/chroma", alias="CHROMA_PERSIST_DIRECTORY")
+    knowledge_max_file_bytes: int = Field(default=30 * 1024 * 1024, gt=0, alias="KNOWLEDGE_MAX_FILE_BYTES")
+    knowledge_max_bases: int = Field(default=10, gt=0, alias="KNOWLEDGE_MAX_BASES")
+    knowledge_max_documents: int = Field(default=200, gt=0, alias="KNOWLEDGE_MAX_DOCUMENTS")
+    knowledge_max_storage_bytes: int = Field(default=300 * 1024 * 1024, gt=0, alias="KNOWLEDGE_MAX_STORAGE_BYTES")
+    knowledge_max_pages: int = Field(default=500, gt=0, alias="KNOWLEDGE_MAX_PAGES")
+    knowledge_max_characters: int = Field(default=500000, gt=0, alias="KNOWLEDGE_MAX_CHARACTERS")
+    knowledge_max_chunks: int = Field(default=1000, gt=0, alias="KNOWLEDGE_MAX_CHUNKS")
+    knowledge_parse_timeout_seconds: float = Field(default=60, gt=0, alias="KNOWLEDGE_PARSE_TIMEOUT_SECONDS")
+    knowledge_task_timeout_seconds: float = Field(default=600, gt=0, alias="KNOWLEDGE_TASK_TIMEOUT_SECONDS")
+    knowledge_task_poll_seconds: float = Field(default=1, gt=0, alias="KNOWLEDGE_TASK_POLL_SECONDS")
+    knowledge_task_queue_timeout_seconds: float = Field(default=600, gt=0, alias="KNOWLEDGE_TASK_QUEUE_TIMEOUT_SECONDS")
+    knowledge_quiz_timeout_seconds: float = Field(default=180, gt=0, alias="KNOWLEDGE_QUIZ_TIMEOUT_SECONDS")
+    knowledge_embedding_timeout_seconds: float = Field(default=15, gt=0, alias="KNOWLEDGE_EMBEDDING_TIMEOUT_SECONDS")
+    knowledge_query_timeout_seconds: float = Field(default=10, gt=0, alias="KNOWLEDGE_QUERY_TIMEOUT_SECONDS")
+    knowledge_agent_timeout_seconds: float = Field(default=45, gt=0, alias="KNOWLEDGE_AGENT_TIMEOUT_SECONDS")
+    knowledge_agent_model_limit: int = Field(default=3, ge=1, le=5, alias="KNOWLEDGE_AGENT_MODEL_LIMIT")
+    knowledge_agent_tool_limit: int = Field(default=4, ge=1, le=8, alias="KNOWLEDGE_AGENT_TOOL_LIMIT")
+    knowledge_max_import_questions: int = Field(default=1000, gt=0, alias="KNOWLEDGE_MAX_IMPORT_QUESTIONS")
 
     model_config = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[2] / ".env",
@@ -64,6 +88,10 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [item.strip() for item in self.cors_origins.split(",") if item.strip()]
+
+    def private_directory(self, directory: str) -> Path:
+        path = Path(directory).expanduser()
+        return (path if path.is_absolute() else Path(__file__).resolve().parents[2] / path).resolve()
 
 
 @lru_cache

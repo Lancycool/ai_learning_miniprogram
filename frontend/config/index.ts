@@ -20,7 +20,9 @@ export default defineConfig<'webpack5'>(async (merge, { command, mode }) => {
     alias: {
       '@': path.resolve(__dirname, '..', 'src'),
     },
-    defineConstants: {},
+    defineConstants: {
+      'process.env.TARO_APP_API_BASE_URL': JSON.stringify(process.env.TARO_APP_API_BASE_URL || 'http://127.0.0.1:8000'),
+    },
     copy: { patterns: [], options: {} },
     framework: 'react',
     compiler: {
