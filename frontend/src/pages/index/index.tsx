@@ -138,7 +138,7 @@ export default function IndexPage() {
         <View className='mini-xp'><Text>☀</Text><Text>{user?.xp_total || 0} XP</Text></View>
       </View>
       <View className='home-intro'>
-        <View className='intro-copy'><Text className='home-title'>今天想闯过{`\n`}什么知识？</Text><Text className='home-description'>你给团团一个主题，团团把它变成五道小关卡。</Text></View>
+        <View className='intro-copy'><Text className='home-title'>今天想闯过什么知识？</Text><Text className='home-description'>你给团团一个主题，团团把它变成五道小关卡。</Text></View>
         <Image className='panda-image home-panda' src={pandaHappy} mode='aspectFit' />
       </View>
       <View className='input-panel'>
