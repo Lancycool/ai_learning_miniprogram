@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user
@@ -13,11 +13,14 @@ from app.models.knowledge import (ChaptersPatch, ImportConfirmInput, ImportDraft
                                   KnowledgeBaseInput, KnowledgeBasePatch, KnowledgeRequest, OriginalPracticeInput, TextDocumentInput)
 from app.services.original_question_service import OriginalQuestionService
 from app.services.knowledge_service import KnowledgeService
+from app.services.knowledge_trace_service import list_traces, maintenance_key_valid
+from app.core.exceptions import ForbiddenError
 
 router = APIRouter(tags=["private-knowledge"])
 CurrentUser = Annotated[User, Depends(get_current_user)]
 Database = Annotated[AsyncSession, Depends(get_db)]
 Config = Annotated[Settings, Depends(get_settings)]
+MaintenanceKey = Annotated[str | None, Header(alias="X-Knowledge-Trace-Key")]
 Page = Annotated[int, Query(ge=1)]
 PageSize = Annotated[int, Query(ge=1, le=100)]
 
@@ -25,6 +28,19 @@ PageSize = Annotated[int, Query(ge=1, le=100)]
 @router.get("/knowledge-bases/capabilities", response_model=ApiResponse[dict])
 async def capabilities(user: CurrentUser, config: Config):
     return ApiResponse(data=knowledge_capabilities(config))
+
+
+@router.get("/maintenance/knowledge-traces", response_model=ApiResponse[dict])
+async def maintenance_traces(config: Config, db: Database, key: MaintenanceKey = None,
+                             trace_id: str | None = None, task_id: str | None = None,
+                             document_id: str | None = None, status: str | None = None,
+                             case_type: str | None = None, page: Page = 1, page_size: PageSize = 20):
+    if not maintenance_key_valid(config, key):
+        raise ForbiddenError("维护查询密钥无效")
+    return ApiResponse(data=await list_traces(db, trace_id=trace_id, task_id=task_id,
+                                              document_id=document_id, status=status,
+                                              case_type=case_type, page=page, page_size=page_size,
+                                              retention_days=config.knowledge_trace_retention_days))
 
 
 @router.get("/knowledge-bases", response_model=ApiResponse[dict])

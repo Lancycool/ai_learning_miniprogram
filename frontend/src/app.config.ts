@@ -17,6 +17,7 @@ export default defineAppConfig({
     'pages/knowledge/document',
     'pages/knowledge/import',
     'pages/knowledge/bank',
+    'pages/maintenance/index',
   ],
   window: {
     navigationStyle: 'custom',

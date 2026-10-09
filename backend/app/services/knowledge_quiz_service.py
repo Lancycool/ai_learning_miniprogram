@@ -47,12 +47,21 @@ class KnowledgeQuizService:
                 raise KnowledgeError("invalid_public_topic", "公开搜索主题不能包含内部地址")
 
     async def generate(self, request, scopes, task_id):
+        started_at = monotonic()
+        self.trace = {"task_id": task_id, "query": request.user_input, "knowledge_base_id": request.knowledge_scope.knowledge_base_id,
+                      "document_public_id": scopes[0].get("document_id") if scopes else None,
+                      "version_public_id": scopes[0].get("version_id") if scopes else None,
+                      "retrievals": [], "agent_events": [], "selected_source_ids": [], "validation": {}, "timings": {}}
         try:
             with tracing_context(enabled=False):
                 async with asyncio.timeout(self.settings.knowledge_quiz_timeout_seconds):
                     return await self._generate(request, scopes, task_id)
         except TimeoutError:
+            self.trace["error_code"] = "knowledge_generation_timeout"
+            self.trace["error_message"] = "知识库出题超时"
             raise KnowledgeError("knowledge_generation_timeout", "知识库出题超时，请缩小资料范围后重试", 503) from None
+        finally:
+            self.trace["timings"]["total_ms"] = round((monotonic() - started_at) * 1000, 2)
 
     async def _generate(self, request, scopes, task_id):
         from langchain.agents import create_agent
@@ -79,13 +88,17 @@ class KnowledgeQuizService:
             if self.scope_validator:
                 await self.scope_validator()
             private_called = True
-            results = await self.vector_store().retrieve(query[:1000], user_id, base_id, scopes)
+            retrievals = []
+            results = await self.vector_store().retrieve(query[:1000], user_id, base_id, scopes, trace=retrievals)
+            self.trace["retrievals"].extend(retrievals)
+            self.trace["agent_events"].append({"tool": "private_retrieval", "query": query[:300], "result_count": len(results)})
             for item in results:
                 matching = [s for s in scopes if s["document_id"] == item["document_id"] and s["version_id"] == item["version_id"]]
                 if not matching or not any((s["chapter_ids"] is None or item["chapter_id"] in s["chapter_ids"])
                     and any(a <= item["start_offset"] < item["end_offset"] <= b for a, b in s["ranges"]) for s in matching):
                     raise KnowledgeError("invalid_scope", "检索结果超出资料范围", 404)
                 evidence[item["source_id"]] = item
+                self.trace["selected_source_ids"].append(item["source_id"])
             return json.dumps([{"source_id": r["source_id"], "title": r["title"], "text": r["text"]} for r in results], ensure_ascii=False)
 
         tools = [search_private_knowledge]
@@ -105,6 +118,8 @@ class KnowledgeQuizService:
                 # checking belong to the enclosing private generation budget.
                 search_deadline = min(deadline, planning_deadline+self.settings.request_timeout_seconds)
                 metadata = await self.search.enrich(public_topic, True, search_deadline, task_id)
+                self.trace["agent_events"].append({"tool": "public_search", "status": metadata.status,
+                                                    "attempt_count": metadata.attempt_count})
                 for source in metadata.sources if metadata.context_used else []:
                     identity = "web_"+source.source_id
                     evidence[identity] = {"source_id": identity, "text": source.content, "title": source.title,
@@ -146,14 +161,17 @@ class KnowledgeQuizService:
             for citation in question.citations:
                 source = available.get(citation.source_id)
                 if source is None or citation.quote not in source["text"]:
+                    self.trace["validation"]["invalid_citation"] = self.trace["validation"].get("invalid_citation", 0) + 1
                     raise insufficient()
                 private_count += source["source_type"] == "private"
                 citations.append({k: v for k, v in source.items() if k not in ("text", "user_id", "distance", "generation", "fingerprint")}
                                  | {"quote": citation.quote})
             if not private_count:
+                self.trace["validation"]["unsupported_answer"] = self.trace["validation"].get("unsupported_answer", 0) + 1
                 raise insufficient()
             snapshots.append({"kind": "knowledge", "citations": citations})
         if not await (self.checker or GroundedAnswerChecker(self.settings)).check(draft, gathered):
+            self.trace["validation"]["unsupported_answer"] = self.trace["validation"].get("unsupported_answer", 0) + 1
             raise insufficient()
         quiz = Quiz(quiz_id=new_quiz_id(), user_input=request.user_input,
             **draft.model_dump(exclude={"questions"}), questions=[q.model_dump(exclude={"citations"}) for q in draft.questions])

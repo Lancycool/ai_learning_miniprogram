@@ -233,5 +233,5 @@ class UserKnowledgeProgress(Base):
 from app.db.knowledge_models import (  # noqa: E402,F401
     KnowledgeBase, KnowledgeDocument, KnowledgeDocumentVersion, KnowledgeChapter,
     KnowledgeProcessingTask, QuestionImportDraft, QuestionBank, QuestionBankItem,
-    QuestionPracticeGroup,
+    QuestionPracticeGroup, KnowledgeRetrievalTrace, KnowledgeBadCase,
 )

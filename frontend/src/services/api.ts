@@ -7,6 +7,9 @@ const QUIZ_REQUEST_TIMEOUT_MS = 60_000
 const TASK_REQUEST_TIMEOUT_MS = 15_000
 const QUIZ_TASK_POLL_INTERVAL_MS = 3_000
 export class ApiError extends Error { constructor(message: string, public code = -1) { super(message); this.name = 'ApiError' } }
+export interface KnowledgeTraceBadCase { bad_case_id: string; type: string; severity: string; status: string; details: Record<string, unknown>; created_at: string }
+export interface KnowledgeTraceItem { trace_id: string; task_id: string; status: string; knowledge_base_id?: string; document_id?: string; version_id?: string; query?: string; retrievals: Array<Record<string, unknown>>; agent_events: Array<Record<string, unknown>>; selected_source_ids: string[]; validation: Record<string, unknown>; timings: Record<string, unknown>; error_code?: string; error_message?: string; created_at: string; bad_cases: KnowledgeTraceBadCase[] }
+export interface KnowledgeTraceResult { items: KnowledgeTraceItem[]; total: number; page: number; page_size: number }
 let refreshPromise: Promise<void> | null = null
 let loginPromise: Promise<UserProfile> | null = null
 
@@ -48,6 +51,24 @@ export function requestKnowledge<T>(path: string, method: 'GET' | 'POST' | 'PATC
   const owner = getAuth().user?.user_id
   if (!owner) return Promise.reject(new ApiError('请先登录'))
   return raw<T>(path, method, data, true, true, control, owner)
+}
+export async function getKnowledgeTraces(maintenanceKey: string, params: { taskId?: string; documentId?: string; status?: string; caseType?: string; page?: number; pageSize?: number } = {}): Promise<KnowledgeTraceResult> {
+  const query = new URLSearchParams()
+  if (params.taskId) query.set('task_id', params.taskId)
+  if (params.documentId) query.set('document_id', params.documentId)
+  if (params.status) query.set('status', params.status)
+  if (params.caseType) query.set('case_type', params.caseType)
+  query.set('page', String(params.page || 1)); query.set('page_size', String(params.pageSize || 20))
+  try {
+    const response = await Taro.request<ApiEnvelope<KnowledgeTraceResult>>({
+      url: `${API_BASE_URL}/api/v1/maintenance/knowledge-traces?${query.toString()}`,
+      method: 'GET', timeout: QUIZ_REQUEST_TIMEOUT_MS,
+      header: { 'content-type': 'application/json', 'X-Knowledge-Trace-Key': maintenanceKey.trim() },
+    })
+    const envelope = response.data
+    if (response.statusCode < 200 || response.statusCode >= 300 || envelope.code !== 0 || envelope.data == null) throw new ApiError(envelope.message || '维护数据查询失败，请检查密钥')
+    return envelope.data
+  } catch (error) { if (error instanceof ApiError) throw error; throw new ApiError('维护数据查询失败，请检查网络') }
 }
 export async function ensureLogin(): Promise<UserProfile> {
   if (getAuth().accessToken && getAuth().user) return getAuth().user!

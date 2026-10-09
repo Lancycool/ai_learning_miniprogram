@@ -40,7 +40,7 @@ export default defineConfig<'webpack5'>(async (merge, { command, mode }) => {
     h5: {
       publicPath: '/',
       staticDirectory: 'static',
-      router: { mode: 'hash' },
+      router: { mode: 'browser' },
       postcss: {
         autoprefixer: { enable: true, config: {} },
         cssModules: { enable: false, config: { namingPattern: 'module', generateScopedName: '[name]__[local]___[hash:base64:5]' } },

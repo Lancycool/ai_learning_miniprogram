@@ -106,7 +106,7 @@ class KnowledgeVectorStore:
                 collection = await local_operation(client.get_collection, info.name)
                 await local_operation(collection.delete, where={"$and": [{"user_id": user_id}, {"document_id": document_id}]})
 
-    async def retrieve(self, query, user_id, base_id, scopes, *, limit=8):
+    async def retrieve(self, query, user_id, base_id, scopes, *, limit=8, trace=None):
         if any(s["user_id"] != user_id or s["knowledge_base_id"] != base_id for s in scopes):
             raise KnowledgeError("invalid_scope", "资料检索范围不正确", 404)
         store = await self.store(user_id, base_id)
@@ -123,9 +123,27 @@ class KnowledgeVectorStore:
                 clauses.append({"chapter_id": {"$in": scope["chapter_ids"]}})
             matches = await local_operation(store.similarity_search_by_vector_with_relevance_scores,
                 vector, k=limit, filter={"$and": clauses})
-            for document, distance in matches:
+            for rank, (document, distance) in enumerate(matches, 1):
                 meta = document.metadata
-                if (not math.isfinite(distance) or distance > self.max_distance
+                reason = None
+                if not math.isfinite(distance):
+                    reason = "non_finite_distance"
+                elif distance > self.max_distance:
+                    reason = "distance_threshold"
+                elif any(meta.get(key) != scope[key] for key in ("user_id", "knowledge_base_id", "document_id", "version_id", "generation")):
+                    reason = "scope_mismatch"
+                elif meta.get("fingerprint") != self.fingerprint:
+                    reason = "fingerprint_mismatch"
+                elif scope.get("chapter_ids") is not None and meta.get("chapter_id") not in scope["chapter_ids"]:
+                    reason = "chapter_mismatch"
+                if trace is not None:
+                    trace.append({"source_id": meta.get("source_id"), "document_id": meta.get("document_id"),
+                                  "version_id": meta.get("version_id"), "chapter_id": meta.get("chapter_id"),
+                                  "distance": float(distance) if math.isfinite(distance) else None,
+                                  "rank": rank, "accepted": reason is None, "filter_reason": reason,
+                                  "start_offset": meta.get("start_offset"), "end_offset": meta.get("end_offset"),
+                                  "quote": document.page_content[:500]})
+                if (reason is not None
                     or any(meta.get(key) != scope[key] for key in ("user_id", "knowledge_base_id", "document_id", "version_id", "generation"))
                     or meta.get("fingerprint") != self.fingerprint
                     or (scope.get("chapter_ids") is not None and meta.get("chapter_id") not in scope["chapter_ids"])):

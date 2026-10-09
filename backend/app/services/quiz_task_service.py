@@ -22,6 +22,7 @@ from app.services.learning_service import LearningService, question_view
 from app.services.quiz_persistence import save_generated_quiz
 from app.services.quiz_service import QuizGenerator, QuizService
 from app.services.web_search_service import WebSearchService
+from app.services.knowledge_trace_service import persist_trace
 from app.utils.content_filter import ContentFilter
 
 
@@ -154,6 +155,8 @@ class QuizTaskWorker:
 
     async def execute(self, claim: TaskClaim) -> None:
         is_private = bool(claim.payload.get("knowledge_scope"))
+        private_generator = None
+        trace = None
         try:
             async with asyncio.timeout(self.settings.knowledge_quiz_timeout_seconds if is_private else self.settings.quiz_task_timeout_seconds):
                 snapshots, scopes = None, None
@@ -176,6 +179,7 @@ class QuizTaskWorker:
                     private_generator = self.knowledge_generator() if self.knowledge_generator else KnowledgeQuizService(
                         self.settings, search=self.search(), scope_validator=validate_scope)
                     result = await private_generator.generate(request, scopes, claim.public_id)
+                    trace = getattr(private_generator, "trace", None)
                     generated, snapshots = result.quiz, result.snapshots
                 else:
                     request = QuizGenerateRequest.model_validate(claim.payload)
@@ -207,15 +211,20 @@ class QuizTaskWorker:
                                 raise KnowledgeError("invalid_evidence", "题目引用不完整，请重新生成", 503)
                             for question, snapshot in zip(questions, snapshots):
                                 question.source_metadata_json = snapshot
+                            await persist_trace(db, trace, task_public_id=claim.public_id, user_id=claim.user_id, status="succeeded")
                         attempt_view = await LearningService(db).create_attempt(user, quiz.public_id, commit=False)
                         attempt = await db.scalar(select(LearningAttempt).where(LearningAttempt.public_id == attempt_view["attempt_id"]))
                         task.status, task.quiz_id, task.attempt_id = "succeeded", quiz.id, attempt.id
                         task.completed_at, task.claim_token, task.lease_expires_at = utc_now(), None, None
         except asyncio.CancelledError:
             await self.fail(claim, "worker_interrupted", "任务执行已中断，请重新生成")
+            if is_private:
+                await self.save_trace(claim, getattr(private_generator, "trace", trace), "failed", "worker_interrupted", "任务执行已中断")
             raise
         except TimeoutError:
             await self.fail(claim, "task_timeout", "知识库出题超时，请缩小资料范围后重试" if is_private else "题目生成超时，请稍后重试")
+            if is_private:
+                await self.save_trace(claim, getattr(private_generator, "trace", trace), "failed", "task_timeout", "知识库出题超时")
         except Exception as exc:
             log_failure("quiz_task_failed", exc, claim.public_id)
             code = exc.reason if isinstance(exc, KnowledgeError) else "generation_failed" if isinstance(exc, AppError) else "internal_error"
@@ -223,6 +232,15 @@ class QuizTaskWorker:
             if is_private and isinstance(exc, (ResourceNotFoundError, ConflictError)):
                 code, message = "source_changed", "所选资料已删除或版本已变化，请重新选择"
             await self.fail(claim, code, message)
+            if is_private:
+                await self.save_trace(claim, getattr(private_generator, "trace", trace), "failed", code, message)
+
+    async def save_trace(self, claim, trace, status, code=None, message=None):
+        if not trace:
+            return
+        async with self.sessions() as db, db.begin():
+            await persist_trace(db, trace, task_public_id=claim.public_id, user_id=claim.user_id,
+                                status=status, error_code=code, error_message=message)
 
     async def fail(self, claim: TaskClaim, code: str, message: str) -> None:
         async with self.sessions() as db:

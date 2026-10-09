@@ -11,6 +11,7 @@
     "build:weapp": "taro build --type weapp",
     "dev:h5": "taro build --type h5 --watch",
     "build:h5": "taro build --type h5",
+    "serve:h5": "python scripts/serve_h5.py --port 8765",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

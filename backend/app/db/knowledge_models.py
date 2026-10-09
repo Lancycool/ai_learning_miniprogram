@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, Index, Integer, JSON, String, UniqueConstraint
+from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.dialects.mysql import MEDIUMTEXT
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -146,3 +146,43 @@ class QuestionPracticeGroup(OwnedResourceMixin, Base):
     chapter_ids_json: Mapped[list] = mapped_column(JSON, nullable=False)
     group_index: Mapped[int] = mapped_column(Integer, nullable=False)
     quiz_id: Mapped[int] = mapped_column(ForeignKey("quizzes.id", ondelete="RESTRICT"), nullable=False)
+
+
+class KnowledgeRetrievalTrace(TimestampMixin, Base):
+    __tablename__ = "knowledge_retrieval_traces"
+    __table_args__ = (
+        UniqueConstraint("task_public_id", name="uq_knowledge_trace_task"),
+        Index("ix_knowledge_trace_created", "created_at"),
+        Index("ix_knowledge_trace_document", "document_public_id", "created_at"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    public_id: Mapped[str] = mapped_column(String(40), unique=True, nullable=False)
+    task_public_id: Mapped[str] = mapped_column(String(40), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    knowledge_base_id: Mapped[str | None] = mapped_column(String(40))
+    document_public_id: Mapped[str | None] = mapped_column(String(40))
+    version_public_id: Mapped[str | None] = mapped_column(String(40))
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    query_text: Mapped[str | None] = mapped_column(Text)
+    retrieval_json: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    agent_events_json: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    selected_source_ids_json: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    validation_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    timings_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    error_code: Mapped[str | None] = mapped_column(String(64))
+    error_message: Mapped[str | None] = mapped_column(String(200))
+
+
+class KnowledgeBadCase(TimestampMixin, Base):
+    __tablename__ = "knowledge_bad_cases"
+    __table_args__ = (
+        Index("ix_knowledge_bad_case_status", "status", "created_at"),
+        Index("ix_knowledge_bad_case_type", "case_type", "created_at"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    public_id: Mapped[str] = mapped_column(String(40), unique=True, nullable=False)
+    trace_id: Mapped[int] = mapped_column(ForeignKey("knowledge_retrieval_traces.id", ondelete="CASCADE"), nullable=False)
+    case_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    severity: Mapped[str] = mapped_column(String(16), default="medium", nullable=False)
+    status: Mapped[str] = mapped_column(String(16), default="open", nullable=False)
+    details_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)

@@ -43,3 +43,8 @@ Desktop.ini
 *.tmp
 *.bak
 backend/data/
+
+
+# Resume
+docs/项目面试问答-AI应用开发.md
+docs/项目简历写法-AI应用开发.md

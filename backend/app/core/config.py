@@ -50,6 +50,8 @@ class Settings(BaseSettings):
     avatar_storage_backend: str = Field(default="local", alias="AVATAR_STORAGE_BACKEND")
     avatar_local_directory: str = Field(default="./data/avatars", alias="AVATAR_LOCAL_DIRECTORY")
     enable_knowledge_base: bool = Field(default=False, alias="ENABLE_KNOWLEDGE_BASE")
+    knowledge_trace_admin_key: SecretStr = Field(default=SecretStr(""), alias="KNOWLEDGE_TRACE_ADMIN_KEY")
+    knowledge_trace_retention_days: int = Field(default=30, ge=1, le=3650, alias="KNOWLEDGE_TRACE_RETENTION_DAYS")
     bailian_api_model: str = Field(default="text-embedding-v4", alias="BAILIAN_API_MODEL")
     bailian_api_key: SecretStr = Field(default=SecretStr(""), alias="BAILIAN_API_KEY")
     bailian_api_base_url: str = Field(default="https://dashscope.aliyuncs.com/api/v1", alias="BAILIAN_API_BASE_URL")

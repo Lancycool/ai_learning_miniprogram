@@ -59,6 +59,7 @@ def knowledge_capabilities(settings: Settings, *, dependency_check=None) -> dict
         "max_original_explanation_characters": 32000,
         "max_original_option_characters": 8000,
         "poll_after_ms": 5000,
+        "trace_enabled": bool(settings.knowledge_trace_admin_key.get_secret_value().strip()),
     }
 
 

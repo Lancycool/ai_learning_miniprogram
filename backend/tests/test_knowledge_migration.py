@@ -70,7 +70,8 @@ async def test_fresh_migration_chain_and_complete_sql_snapshot(env):
         def upgrade_chain(sync_connection):
             with Operations.context(MigrationContext.configure(sync_connection)):
                 for name in ("20260927_0001_user_system.py", "20261003_0002_web_search.py",
-                             "20261003_0003_quiz_tasks.py", "20261004_0004_knowledge.py"):
+                             "20261003_0003_quiz_tasks.py", "20261004_0004_knowledge.py",
+                             "20261008_0005_knowledge_trace.py"):
                     spec = importlib.util.spec_from_file_location(name, backend / "alembic/versions" / name)
                     module = importlib.util.module_from_spec(spec)
                     spec.loader.exec_module(module)
