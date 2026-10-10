@@ -110,6 +110,8 @@ pnpm build:h5
 
 本版部署使用一个后端服务进程。管理员需要一起备份 MySQL、原文件和 Chroma。配置、依赖、限额与回滚规则见 [部署说明](docs/私有知识库部署说明.md)，实际开发测试结果见 [验收记录](docs/私有知识库开发验收.md)。
 
+后端支持统一 JSON 日志和 Prometheus 指标。请求日志会关联 `request_id`，后台任务日志会关联 `task_id`。指标入口为 `GET /metrics`，配置和告警建议见 [可观测性说明](docs/可观测性说明.md)。
+
 ## 可选联网出题
 
 系统优先读取 `backend/.env` 中的 `TAVILYSEARCH_API_KEY`，并兼容 `TAVILY_API_KEY`。后端 `ENABLE_WEB_SEARCH` 默认开启。请求同名字段 `enable_web_search=false` 可以关闭本次搜索；后端关闭时，请求不能强行打开。缺少或无效密钥不会阻止应用启动，系统会回退原 Prompt。

@@ -16,6 +16,7 @@ from app.models.quiz import Quiz
 from app.services.quiz_service import QuizService
 from app.services.web_search_service import INJECTION, SENSITIVE, WebSearchService, public_domain
 from app.utils.id_generator import new_quiz_id
+from app.core.observability import record_knowledge_retrieval
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,7 @@ class KnowledgeQuizService:
 
     async def generate(self, request, scopes, task_id):
         started_at = monotonic()
+        outcome = "failed"
         self.trace = {"task_id": task_id, "query": request.user_input, "knowledge_base_id": request.knowledge_scope.knowledge_base_id,
                       "document_public_id": scopes[0].get("document_id") if scopes else None,
                       "version_public_id": scopes[0].get("version_id") if scopes else None,
@@ -55,13 +57,16 @@ class KnowledgeQuizService:
         try:
             with tracing_context(enabled=False):
                 async with asyncio.timeout(self.settings.knowledge_quiz_timeout_seconds):
-                    return await self._generate(request, scopes, task_id)
+                    result = await self._generate(request, scopes, task_id)
+                    outcome = "success"
+                    return result
         except TimeoutError:
             self.trace["error_code"] = "knowledge_generation_timeout"
             self.trace["error_message"] = "知识库出题超时"
             raise KnowledgeError("knowledge_generation_timeout", "知识库出题超时，请缩小资料范围后重试", 503) from None
         finally:
             self.trace["timings"]["total_ms"] = round((monotonic() - started_at) * 1000, 2)
+            record_knowledge_retrieval(outcome, monotonic() - started_at)
 
     async def _generate(self, request, scopes, task_id):
         from langchain.agents import create_agent

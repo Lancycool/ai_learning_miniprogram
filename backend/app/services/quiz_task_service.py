@@ -1,6 +1,7 @@
 """Durable database queue. Model calls never hold a database connection."""
 import asyncio
 import logging
+from time import monotonic
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import timedelta
@@ -24,6 +25,13 @@ from app.services.quiz_service import QuizGenerator, QuizService
 from app.services.web_search_service import WebSearchService
 from app.services.knowledge_trace_service import persist_trace
 from app.utils.content_filter import ContentFilter
+from app.core.observability import (
+    record_task_created,
+    record_task_finished,
+    record_task_queue_wait,
+    request_id_context,
+    task_context,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -43,6 +51,7 @@ class QuizTaskService:
         self.db, self.settings = db, settings
 
     async def create(self, user: User, request: QuizTaskCreateRequest) -> dict:
+        created = False
         payload = request.model_dump(mode="json", exclude={"request_id", "knowledge_scope", "public_search_topic", "public_search_confirmed"})
         payload["user_input"] = ContentFilter(self.settings.blocked_term_list).clean(request.user_input)
         # Serialize submissions for this user, including requests from two devices.
@@ -71,7 +80,10 @@ class QuizTaskService:
                 raise ConflictError("你已有生成任务正在处理，请等待任务完成")
             task = QuizGenerationTask(public_id=public_id("qtask"), user_id=user.id, request_id=request.request_id, request_json=payload)
             self.db.add(task)
+            created = True
         await self.db.commit()
+        if created:
+            record_task_created(bool(request.knowledge_scope))
         return await self.view(user, task.public_id)
 
     async def view(self, user: User, task_id: str) -> dict:
@@ -95,6 +107,7 @@ class TaskClaim:
     public_id: str
     user_id: int
     token: str
+    request_id: str
     payload: dict
 
 
@@ -143,7 +156,8 @@ class QuizTaskWorker:
                 task.status, task.claim_token, task.started_at = "running", public_id("claim"), utc_now()
                 timeout = self.settings.knowledge_quiz_timeout_seconds if task.request_json.get("knowledge_scope") else self.settings.quiz_task_timeout_seconds
                 task.lease_expires_at = task.started_at + timedelta(seconds=timeout+15)
-                return TaskClaim(task.id, task.public_id, task.user_id, task.claim_token, task.request_json)
+                record_task_queue_wait(max(0, (utc_now() - task.created_at).total_seconds()), bool(task.request_json.get("knowledge_scope")))
+                return TaskClaim(task.id, task.public_id, task.user_id, task.claim_token, task.request_id, task.request_json)
 
     async def run_once(self) -> bool:
         await self.expire_stale()
@@ -154,6 +168,17 @@ class QuizTaskWorker:
         return True
 
     async def execute(self, claim: TaskClaim) -> None:
+        started = monotonic()
+        outcome = {"status": "internal_error"}
+        request_token = request_id_context.set(claim.request_id or "-")
+        with task_context(claim.public_id):
+            try:
+                await self._execute(claim, outcome)
+            finally:
+                record_task_finished(outcome["status"], bool(claim.payload.get("knowledge_scope")), monotonic() - started)
+                request_id_context.reset(request_token)
+
+    async def _execute(self, claim: TaskClaim, outcome: dict[str, str]) -> None:
         is_private = bool(claim.payload.get("knowledge_scope"))
         private_generator = None
         trace = None
@@ -198,6 +223,7 @@ class QuizTaskWorker:
                                 raise KnowledgeError("source_changed", "资料或索引版本已经变化，请重新生成", 409)
                         task = await db.scalar(select(QuizGenerationTask).where(QuizGenerationTask.id == claim.task_id, QuizGenerationTask.status == "running", QuizGenerationTask.claim_token == claim.token, QuizGenerationTask.lease_expires_at > utc_now()).with_for_update())
                         if not task:
+                            outcome["status"] = "stale"
                             return  # A stale worker cannot publish its late result.
                         user = await db.get(User, claim.user_id)
                         if not user or user.status != "active":
@@ -216,16 +242,20 @@ class QuizTaskWorker:
                         attempt = await db.scalar(select(LearningAttempt).where(LearningAttempt.public_id == attempt_view["attempt_id"]))
                         task.status, task.quiz_id, task.attempt_id = "succeeded", quiz.id, attempt.id
                         task.completed_at, task.claim_token, task.lease_expires_at = utc_now(), None, None
+                        outcome["status"] = "succeeded"
         except asyncio.CancelledError:
+            outcome["status"] = "worker_interrupted"
             await self.fail(claim, "worker_interrupted", "任务执行已中断，请重新生成")
             if is_private:
                 await self.save_trace(claim, getattr(private_generator, "trace", trace), "failed", "worker_interrupted", "任务执行已中断")
             raise
         except TimeoutError:
+            outcome["status"] = "task_timeout"
             await self.fail(claim, "task_timeout", "知识库出题超时，请缩小资料范围后重试" if is_private else "题目生成超时，请稍后重试")
             if is_private:
                 await self.save_trace(claim, getattr(private_generator, "trace", trace), "failed", "task_timeout", "知识库出题超时")
         except Exception as exc:
+            outcome["status"] = "failed"
             log_failure("quiz_task_failed", exc, claim.public_id)
             code = exc.reason if isinstance(exc, KnowledgeError) else "generation_failed" if isinstance(exc, AppError) else "internal_error"
             message = exc.public_message if isinstance(exc, KnowledgeError) else "题目生成失败，请稍后重试"

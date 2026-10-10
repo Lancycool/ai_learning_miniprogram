@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     jwt_audience: str = Field(default="bamboo-quiz-miniapp", alias="JWT_AUDIENCE")
     access_token_expire_minutes: int = Field(default=15, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
     refresh_token_expire_days: int = Field(default=30, alias="REFRESH_TOKEN_EXPIRE_DAYS")
+    observability_log_level: str = Field(default="INFO", alias="OBSERVABILITY_LOG_LEVEL")
     avatar_storage_backend: str = Field(default="local", alias="AVATAR_STORAGE_BACKEND")
     avatar_local_directory: str = Field(default="./data/avatars", alias="AVATAR_LOCAL_DIRECTORY")
     enable_knowledge_base: bool = Field(default=False, alias="ENABLE_KNOWLEDGE_BASE")

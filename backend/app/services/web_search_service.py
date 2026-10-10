@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from aiohttp import ClientError
 
 from app.core.config import Settings
+from app.core.observability import record_web_search
 from app.models.web_search import SearchSource, WebSearchMetadata
 
 logger = logging.getLogger(__name__)
@@ -240,7 +241,7 @@ class WebSearchService:
 
     def log(self, metadata: WebSearchMetadata, request_id: str, started: float):
         try:
-            fields = {"request_id": request_id, "search_status": metadata.status, "search_params": metadata.effective_params, "elapsed_ms": round((self.clock()-started)*1000), "error_type": metadata.fallback_reason, "attempt_count": metadata.attempt_count, "prompt_path": metadata.prompt_version}
+            fields = {"search_request_id": request_id, "search_status": metadata.status, "search_params": metadata.effective_params, "elapsed_ms": round((self.clock()-started)*1000), "error_type": metadata.fallback_reason, "attempt_count": metadata.attempt_count, "prompt_path": metadata.prompt_version}
             emit = logger.warning if metadata.status == "fallback" else logger.info
             emit("quiz_web_search %s", json.dumps(fields, ensure_ascii=False), extra=fields)
         except Exception:
@@ -316,5 +317,6 @@ class WebSearchService:
                 self.slots.release()
             if probe:
                 self.probing = False
+            record_web_search(meta.status, self.clock() - started)
         self.log(meta, request_id, started)
         return meta
